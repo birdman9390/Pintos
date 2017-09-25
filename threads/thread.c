@@ -71,8 +71,8 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
-static void ready_list_sort_desc();
-bool *is_desc(struct thread *a, struct thread *b);
+// static void ready_list_sort_desc();
+// bool *is_desc(struct thread *a, struct thread *b);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -249,7 +249,7 @@ thread_unblock (struct thread *t)
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
   list_push_back (&ready_list, &t->elem);
-  ready_list_sort_desc();
+  // ready_list_sort_desc();
 
   t->status = THREAD_READY;
   intr_set_level (old_level);
@@ -322,7 +322,7 @@ thread_yield (void)
   old_level = intr_disable ();
   if (cur != idle_thread){
     list_push_back (&ready_list, &cur->elem);
-    ready_list_sort_desc();
+//    ready_list_sort_desc();
   }
   cur->status = THREAD_READY;
   schedule ();
@@ -477,7 +477,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
-  ready_list_sort_desc();
+//  ready_list_sort_desc();
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -590,20 +590,20 @@ allocate_tid (void)
   return tid;
 }
 
-static void ready_list_sort_desc(){
-  enum intr_level old_level;
-  old_level = intr_disable ();
-
-  list_sort(&ready_list, is_desc, NULL);
-
-  intr_set_level (old_level);
-}
-bool *is_desc(struct thread *a, struct thread *b){
-  if(a->priority > b->priority){
-    return true;
-  }
-  return false;
-}
+// static void ready_list_sort_desc(){
+//   enum intr_level old_level;
+//   old_level = intr_disable ();
+//
+//   list_sort(&ready_list, is_desc, NULL);
+//
+//   intr_set_level (old_level);
+// }
+// bool *is_desc(struct thread *a, struct thread *b){
+//   if(a->priority > b->priority){
+//     return true;
+//   }
+//   return false;
+// }
 
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
