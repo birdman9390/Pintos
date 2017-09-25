@@ -190,7 +190,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
 
   i = 0;
   while(i < num_of_alarm){
-    if(timer_ticks()> wake_up_time[i]){
+    if(timer_ticks()>= wake_up_time[i]){
       thread_unblock(alarm_thread[i]);
 
       j = i;
