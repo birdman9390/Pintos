@@ -71,8 +71,9 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
-// static void ready_list_sort_desc();
-// bool *is_desc(struct thread *a, struct thread *b);
+static void ready_list_sort_desc();
+bool is_desc(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -212,6 +213,10 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  // if the thread is highest priority,
+  // this cannot go into thread_block(). because of deadlock.
+  thread_preempt();
+
   return tid;
 }
 
@@ -249,10 +254,11 @@ thread_unblock (struct thread *t)
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
   list_push_back (&ready_list, &t->elem);
-  // ready_list_sort_desc();
+  ready_list_sort_desc();
 
   t->status = THREAD_READY;
   intr_set_level (old_level);
+
 }
 
 /* Returns the name of the running thread. */
@@ -322,7 +328,7 @@ thread_yield (void)
   old_level = intr_disable ();
   if (cur != idle_thread){
     list_push_back (&ready_list, &cur->elem);
-//    ready_list_sort_desc();
+    ready_list_sort_desc();
   }
   cur->status = THREAD_READY;
   schedule ();
@@ -351,6 +357,7 @@ void
 thread_set_priority (int new_priority)
 {
   thread_current ()->priority = new_priority;
+  thread_preempt();
 }
 
 /* Returns the current thread's priority. */
@@ -477,7 +484,6 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
-//  ready_list_sort_desc();
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -590,20 +596,31 @@ allocate_tid (void)
   return tid;
 }
 
-// static void ready_list_sort_desc(){
-//   enum intr_level old_level;
-//   old_level = intr_disable ();
-//
-//   list_sort(&ready_list, is_desc, NULL);
-//
-//   intr_set_level (old_level);
-// }
-// bool *is_desc(struct thread *a, struct thread *b){
-//   if(a->priority > b->priority){
-//     return true;
-//   }
-//   return false;
-// }
+// sort the ready_list of threads - JM
+static void ready_list_sort_desc(){
+  enum intr_level old_level;
+  old_level = intr_disable ();
+
+  list_sort(&ready_list, is_desc, NULL);
+
+  intr_set_level (old_level);
+}
+bool is_desc(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED){
+  if(list_entry(a, struct thread, elem)->priority
+    > list_entry(b, struct thread, elem)->priority){
+    return true;
+  }
+  return false;
+}
+
+// thread preempt (if the thread at the front of list is highest priority) -JM
+void thread_preempt(){
+  if(list_entry(list_front(&ready_list), struct thread, elem)->priority
+    > thread_current()->priority){
+      thread_yield();
+    }
+}
+
 
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
