@@ -72,8 +72,7 @@ void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
 static void ready_list_sort_desc();
-bool is_desc(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
-
+static bool is_desc(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -214,7 +213,7 @@ thread_create (const char *name, int priority,
   thread_unblock (t);
 
   // if the thread is highest priority,
-  // this cannot go into thread_block(). because of deadlock.
+  // this cannot go into thread_block(). It makes error.
   thread_preempt();
 
   return tid;
@@ -509,8 +508,10 @@ next_thread_to_run (void)
 {
   if (list_empty (&ready_list))
     return idle_thread;
-  else
+  else {
+    ready_list_sort_desc();
     return list_entry (list_pop_front (&ready_list), struct thread, elem);
+  }
 }
 
 /* Completes a thread switch by activating the new thread's page
@@ -605,7 +606,7 @@ static void ready_list_sort_desc(){
 
   intr_set_level (old_level);
 }
-bool is_desc(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED){
+static bool is_desc(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED){
   if(list_entry(a, struct thread, elem)->priority
     > list_entry(b, struct thread, elem)->priority){
     return true;
@@ -615,10 +616,12 @@ bool is_desc(const struct list_elem *a, const struct list_elem *b, void *aux UNU
 
 // thread preempt (if the thread at the front of list is highest priority) -JM
 void thread_preempt(){
-  if(list_entry(list_front(&ready_list), struct thread, elem)->priority
-    > thread_current()->priority){
-      thread_yield();
-    }
+  if(thread_current() != idle_thread && !list_empty (&ready_list)){
+    if(list_entry(list_front(&ready_list), struct thread, elem)->priority
+      > thread_current()->priority){
+        thread_yield();
+      }
+  }
 }
 
 

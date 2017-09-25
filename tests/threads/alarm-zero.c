@@ -8,8 +8,9 @@
 #include "devices/timer.h"
 
 void
-test_alarm_zero (void) 
+test_alarm_zero (void)
 {
+  //sema_self_test();
   timer_sleep (0);
   pass ();
 }
