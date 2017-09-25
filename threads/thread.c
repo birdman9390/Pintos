@@ -71,8 +71,9 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
-static void ready_list_sort_desc();
+void ready_list_sort_desc();
 bool *is_desc(struct thread *a, struct thread *b);
+void test_max_priority ();
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -253,6 +254,7 @@ thread_unblock (struct thread *t)
 
   t->status = THREAD_READY;
   intr_set_level (old_level);
+
 }
 
 /* Returns the name of the running thread. */
@@ -351,6 +353,7 @@ void
 thread_set_priority (int new_priority)
 {
   thread_current ()->priority = new_priority;
+  test_max_priority ();
 }
 
 /* Returns the current thread's priority. */
@@ -477,7 +480,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
-  ready_list_sort_desc();
+
+
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -590,13 +594,20 @@ allocate_tid (void)
   return tid;
 }
 
-static void ready_list_sort_desc(){
+void ready_list_sort_desc(){
   enum intr_level old_level;
-  old_level = intr_disable ();
+//  old_level = intr_disable ();
 
   list_sort(&ready_list, is_desc, NULL);
 
-  intr_set_level (old_level);
+  struct list temp = ready_list;
+  struct list_elem* listElem = &(temp.head);
+  for(;!list_empty(&listElem) ; listElem=listElem->next){
+    printf("thread name : %s  %d -----------------",((struct thread*)listElem)->name, ((struct thread*)listElem)->priority);
+  }
+
+
+//  intr_set_level (old_level);
 }
 bool *is_desc(struct thread *a, struct thread *b){
   if(a->priority > b->priority){
@@ -604,6 +615,15 @@ bool *is_desc(struct thread *a, struct thread *b){
   }
   return false;
 }
+
+void test_max_priority (){
+    if (!list_empty (&ready_list) &&
+        thread_current ()->priority <
+          list_entry (list_front (&ready_list), struct thread, elem)->priority){
+      thread_yield ();
+  }
+}
+
 
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
