@@ -74,6 +74,8 @@ static tid_t allocate_tid (void);
 static void ready_list_sort_desc();
 static bool is_desc(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
+struct lock *thread_get_lock();
+bool has_thread_lock();
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -208,6 +210,12 @@ thread_create (const char *name, int priority,
   sf->ebp = 0;
 
   intr_set_level (old_level);
+  //
+  // if(thread_current()->lock == aux){
+  //   thread_current ()->priority = priority;   // preempt할 필요는 없으니까.
+  // }
+  // printf("current thread : %s, %d \n\n",thread_name(), thread_get_priority());
+  // printf("new thread : %s , %d\n\n",name,priority);
 
   /* Add to run queue. */
   thread_unblock (t);
@@ -218,7 +226,12 @@ thread_create (const char *name, int priority,
 
   return tid;
 }
-
+// struct lock *thread_get_lock(){
+//   return thread_current()->lock;
+// }
+// bool has_thread_lock(){
+//   return !(thread_current()->lock == NULL);
+// }
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
 
@@ -329,6 +342,7 @@ thread_yield (void)
     list_push_back (&ready_list, &cur->elem);
     ready_list_sort_desc();
   }
+
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -356,6 +370,7 @@ void
 thread_set_priority (int new_priority)
 {
   thread_current ()->priority = new_priority;
+  thread_current()->init_priority = new_priority;
   thread_preempt();
 }
 
@@ -481,6 +496,8 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->init_priority = priority;
+  t->donate_num = 0;
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
 }
@@ -619,7 +636,7 @@ void thread_preempt(){
   if(thread_current() != idle_thread && !list_empty (&ready_list)){
     if(list_entry(list_front(&ready_list), struct thread, elem)->priority
       > thread_current()->priority){
-        thread_yield();
+        thread_yield();       // change it!
       }
   }
 }

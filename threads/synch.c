@@ -77,12 +77,11 @@ sema_down (struct semaphore *sema)
     {
       list_push_back (&sema->waiters, &thread_current ()->elem);
       wait_list_sort_desc(sema);
-    //  printf("block is running");
       thread_block ();
-    //  printf("block is relase.");
     }
   sema->value--;
   intr_set_level (old_level);
+
 }
 
 
@@ -210,9 +209,21 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
+  if(!(lock->holder == NULL) ){
+    if(lock->holder->priority < thread_current()->priority){
+    //    printf("priority donation occur, lock_holder init priority: %d, %d\n", lock->holder->init_priority, lock->holder->priority);
+
+        lock->holder->priority = thread_current()->priority;
+        lock->holder->donate_num += 1;
+    //    printf("donated_priority and donate_num : %d m%d\n", lock->holder->priority, lock->holder->donate_num);
+      }
+  }
+
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
+  // thread_current()->lock = lock;
 }
+
 
 /* Tries to acquires LOCK and returns true if successful or false
    on failure.  The lock must not already be held by the current
@@ -244,6 +255,18 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
+
+//  printf("%d %d \n",lock->holder->priority, lock->holder->init_priority);
+  if(lock->holder->donate_num != 0){
+    if(lock->holder->priority != lock->holder->init_priority){
+      // printf("current lock holder : %s \nvalue : %d \ninit_value : %d\n"
+      //   ,lock->holder->name, lock->holder->priority, lock->holder->init_priority);
+      lock->holder->priority = lock->holder->init_priority;
+
+    }
+    lock->holder->donate_num = 0;
+  }
+
 
   lock->holder = NULL;
   sema_up (&lock->semaphore);
@@ -312,6 +335,7 @@ cond_wait (struct condition *cond, struct lock *lock)
   list_push_back (&cond->waiters, &waiter.elem);
   lock_release (lock);
   sema_down (&waiter.semaphore);
+  //printf("semaphore value : %d",waiter.semaphore.value);
   lock_acquire (lock);
 }
 
@@ -332,6 +356,12 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
 
   if (!list_empty (&cond->waiters)){
     cond_list_sort_desc(cond);
+    struct semaphore *a = &list_entry (list_front (&cond->waiters),
+                    struct semaphore_elem, elem)->semaphore;
+    struct thread *front_thread = list_entry( list_front(&a->waiters),
+                          struct thread, elem);
+
+    // printf("signal getting thread's name : %s\n",front_thread->name );
     sema_up (&list_entry (list_pop_front (&cond->waiters),
                           struct semaphore_elem, elem)->semaphore);
 
