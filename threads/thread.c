@@ -29,7 +29,7 @@
 static struct list all_list;
 
 /* Idle thread. */
-static struct thread *idle_thread;
+//static struct thread *idle_thread;
 
 /* Initial thread, the thread running init.c:main(). */
 //static struct thread *initial_thread;
@@ -208,11 +208,11 @@ thread_create (const char *name, int priority,
   sf->ebp = 0;
 
   intr_set_level (old_level);
-printf("1");
+// printf("1");
   /* Add to run queue. */
   thread_unblock (t);
-printf("2");
-  // if the thread is highest priority,
+// printf("2");
+//   // if the thread is highest priority,
   // this cannot go into thread_block(). It makes error.
   thread_preempt();
 

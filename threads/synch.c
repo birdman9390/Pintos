@@ -76,6 +76,7 @@ sema_down (struct semaphore *sema)
   while (sema->value == 0)
     {
       list_push_back (&sema->waiters, &thread_current ()->elem);
+//      printf("\n\nsema_list_push_back occurs : (name, pri) -> (%s, %d) \n", thread_current()->name, thread_current()->priority);
       wait_list_sort_desc(sema);
     //  printf("block is running");
       thread_block ();
@@ -209,18 +210,82 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-//printf("acquire!\n");
+  // for debug
+  struct list_elem *le;
+  struct list_elem *te;
+  struct lock *l;
+
+  struct thread *t;
+  struct thread *t_temp;
+  int i,j;
+  struct thread* cur = thread_current();
+
   if(lock->semaphore.value==0){
     if((lock->holder)->priority<thread_current()->priority)
     {
+      printf("PRIORITY DONATION occurs. (기부자) %s %d -> (받는 홀더) %s %d\n",thread_current()->name,thread_current()->priority,lock->holder->name,lock->holder->priority);
       (lock->holder)->priority=thread_current()->priority;
     }
-    list_push_back(&thread_current()->lock_list,&lock->lockelem);
-//    list_push_back(&((lock->holder)->semaphore)->waiters,&thread_current()->elem);
   }
+  if(lock->holder != NULL){
+    printf("lock_holder %s will get lock's sema. %s  --------->   start: \n", lock->holder->name, thread_current()->name);
+    //
+    // if(lock->holder->priority != lock->holder->basic_priority){
+    //   le=list_front(&lock->holder->lock_list);                // lock_list의 첫번째 lock 가짐.
+    //   for(i=0;i<list_size(&lock->holder->lock_list);i++){     // lock_list size만큼. iteration
+    //     printf("iterate %d : list_size is not 0, lock_list size : %d\n",i, list_size(&lock->holder->lock_list));
+    //
+    //     l=list_entry(le,struct lock, lockelem);               // lock 객체로 바꾸어줌.
+    //     printf("waiters size %d\n",list_size(&(l->semaphore.waiters)));
+    //     if(list_empty(&(l->semaphore.waiters))){
+    //       printf("lock list is empty. %d\n",i);
+    //       continue;
+    //     }
+    //     te=list_front(&(l->semaphore.waiters));
+    //     t_temp = list_entry(te,struct thread,elem);
+    //     for(j=0;j<list_size(&l->semaphore.waiters);j++)
+    //     {
+    //       t=list_entry(te,struct thread, elem);
+    //       printf("lock %d : thread : iter %d name %s\n\n", i , j, t->name );
+    //       te=te->next;
+    //     }
+    //     le=le->next;
+    //   }
+    // }
+  }
+
+
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
-  
+  list_push_back(&(lock->holder->lock_list),&lock->lockelem);
+  if(cur != lock->holder){
+  if(lock->holder->priority != lock->holder->basic_priority){
+    le=list_front(&lock->holder->lock_list);                // lock_list의 첫번째 lock 가짐.
+    for(i=0;i<list_size(&lock->holder->lock_list);i++){     // lock_list size만큼. iteration
+      printf("iterate %d : list_size is not 0, lock_list size : %d\n",i, list_size(&lock->holder->lock_list));
+
+      l=list_entry(le,struct lock, lockelem);               // lock 객체로 바꾸어줌.
+      printf("waiters size %d\n",list_size(&(l->semaphore.waiters)));
+      if(list_empty(&(l->semaphore.waiters))){
+        printf("lock list is empty. %d\n",i);
+        continue;
+      }
+      te=list_front(&(l->semaphore.waiters));
+      t_temp = list_entry(te,struct thread,elem);
+      for(j=0;j<list_size(&l->semaphore.waiters);j++)
+      {
+        t=list_entry(te,struct thread, elem);
+        printf("lock %d : thread : iter %d name %s\n\n", i , j, t->name );
+        te=te->next;
+      }
+      le=le->next;
+    }
+  }
+  }
+
+
+//  printf("lock_list is add by thread \' %s \' his pri %d \n", lock->holder->name, lock->holder->priority);
+
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -256,40 +321,70 @@ lock_release (struct lock *lock)
   struct lock *l;
 
   struct thread *t;
+  struct thread *t_temp;
   int i,j;
   int temp_priority=PRI_MIN;
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
+
+  enum intr_level old_level;
+  old_level = intr_disable ();
 //printf("release!\n");
-  if(lock->holder->priority!=lock->holder->basic_priority)
+  if(lock->holder->priority!=lock->holder->basic_priority)    // 기존 priority 와 다르면
   {
-    if(!list_empty(&lock->holder->lock_list)){
-      le=list_front(&lock->holder->lock_list);
-      for(i=0;i<list_size(&lock->holder->lock_list);i++)
-      {
-        l=list_entry(le,struct lock, lockelem);
-        te=list_front(&l->semaphore.waiters);
-        for(j=0;j<list_size(&l->semaphore.waiters);j++)
+    printf("\n----------------DONTION OCCURED AND THIS IS TUNBACK.\n");
+    printf("this thread ");
+    printf("this is lock holder: name, pri, basic_pri : %s, %d, %d ----------\n",
+      lock->holder->name,lock->holder->priority, lock->holder->basic_priority);
+    if(!list_empty(&lock->holder->lock_list)){                // lock_list가 있으면,
+      le=list_front(&lock->holder->lock_list);                // lock_list의 첫번째 lock 가짐.
+      printf("lock_list exist. checking start! **********\n");
+      for(i=0;i<list_size(&lock->holder->lock_list);i++){     // lock_list size만큼. iteration
+        printf("0");
+        l=list_entry(le,struct lock, lockelem);               // lock 객체로 바꾸어줌.
+        printf("1");
+        if(list_empty(&(l->semaphore.waiters))){
+          printf("2");
+          continue;
+        }
+        printf("3");
+        te=list_front(&(l->semaphore.waiters));                 // 그 lock을 기다리는 첫번째 waiters list_elem
+        printf("4");
+        t_temp = list_entry(te,struct thread,elem);
+
+        printf("this lock holder %s, sema_first: name,priority -> %s, %d\n",l->holder->name,t_temp->name,t_temp->priority);
+        for(j=0;j<list_size(&l->semaphore.waiters);j++)       // 그 lock 기다리는 thread size만큼.
         {
-          t=list_entry(te,struct thread, elem);
-          if(t->priority>lock->holder->basic_priority&&t->priority>temp_priority)
+          t=list_entry(te,struct thread, elem);               // waiter 의 iterator thread*
+          printf("this is waiters %s. priority: %d basic_priority: %d--------> lock holder name,pri,basic_pri:  %s, %d, %d\n \n",t->name,t->priority,t->basic_priority,lock->holder->name,lock->holder->priority,lock->holder->basic_priority);
+          if(t->priority>lock->holder->basic_priority&&t->priority>temp_priority){
+                          // 만약 waiter가 lock_holder의 priority보다 크고, 지금까지 기록된 priority보다도 크다면
+            printf("priority multi release is occured. %s's %d <- %d\n\n",lock->holder->name,lock->holder->priority,t->priority);
             temp_priority=t->priority;
+          }
           te=te->next;
         }
         le=le->next;
-
+        // te에 대한 for 문 필요 없을 듯. 어차피 sema_list는 sorting 되어 있음.
       }
-      if(lock->holder->basic_priority<temp_priority)
+      printf("5");
+      // priority donation이 일어나 있을 때,
+      if(lock->holder->basic_priority<temp_priority){
+        printf("priority multi donation occur : %s was %d. it will get %d \n ", lock->holder->name, lock->holder->priority, temp_priority);
         lock->holder->priority=temp_priority;
-
-      else
+      } // 더 높은 thread 가 없는 경우.
+      else{
+        printf("there is lock waiter, but no one higher than %s -> basic_priority %d \n",lock->holder->name, lock->holder->basic_priority);
         lock->holder->priority=lock->holder->basic_priority;
+      }
     }
-    else
+    else{ // lock_list 가 없는 경우.
+      printf("priority donation will be finish. there is no more lock in this thread.\n");
       lock->holder->priority=lock->holder->basic_priority;
-
+    }
   }
-
+  intr_set_level (old_level);
+  // lock_release 하면 여기에서 holder thread의 lock list에서 해당 lock  pop_back 해주어야 함.
   lock->holder = NULL;
   sema_up (&lock->semaphore);
 }
