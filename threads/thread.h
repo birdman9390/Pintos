@@ -87,11 +87,19 @@ struct thread
     enum thread_status status;          /* Thread state. */
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
-    int init_priority;
+
     int priority;                       /* Priority. */
     int donate_num;               // how many donated priority.
   //  struct list donated_value_list;    // this is stack strcuture of donated value.
     int donated_value_list[10];
+
+    struct list donate_list;
+    struct list_elem donate_list_elem;
+    int init_priority;
+    struct lock *lock_list;
+
+    int recent_cpu;
+    int nice;
 
     struct list_elem allelem;           /* List element for all threads list. */
     // struct lock *lock;
@@ -113,6 +121,8 @@ struct thread
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
+
+int load_avg;
 
 void thread_init (void);
 void thread_start (void);
@@ -147,5 +157,7 @@ int thread_get_load_avg (void);
 
 void thread_preempt();
 
+void BSD_update(int64_t ticks);
+void priority_update(void);
 
 #endif /* threads/thread.h */

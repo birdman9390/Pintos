@@ -30,8 +30,9 @@ static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
 
-static int64_t wake_up_time[10];
-static struct thread *alarm_thread[10];
+
+static int64_t wake_up_time[64];
+static struct thread *alarm_thread[64];
 static int num_of_alarm=0;
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
@@ -186,6 +187,12 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   int i, j;
   ticks++;
+  if(thread_mlfqs){
+     BSD_update(ticks);
+     if(ticks%4 ==0){
+       priority_update();
+     }
+   }
   thread_tick ();
 
   i = 0;
