@@ -90,6 +90,9 @@ struct thread
     int init_priority;
     int priority;                       /* Priority. */
     int donate_num;               // how many donated priority.
+  //  struct list donated_value_list;    // this is stack strcuture of donated value.
+    int donated_value_list[10];
+
     struct list_elem allelem;           /* List element for all threads list. */
     // struct lock *lock;
 

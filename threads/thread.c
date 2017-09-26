@@ -487,6 +487,8 @@ is_thread (struct thread *t)
 static void
 init_thread (struct thread *t, const char *name, int priority)
 {
+  int i=0;
+
   ASSERT (t != NULL);
   ASSERT (PRI_MIN <= priority && priority <= PRI_MAX);
   ASSERT (name != NULL);
@@ -498,6 +500,11 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->init_priority = priority;
   t->donate_num = 0;
+  while(i<10){
+    t->donated_value_list[i] = -1;
+    i++;
+  }
+
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
 }
