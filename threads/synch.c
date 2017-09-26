@@ -210,8 +210,9 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
-  priority_donation(lock);
-
+  if(!thread_mlfqs){
+    priority_donation(lock);
+  }
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
 }
@@ -269,8 +270,9 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
-  priority_turn_back(lock);
-
+  if(!thread_mlfqs){
+    priority_turn_back(lock);
+  }
   lock->holder = NULL;
   sema_up (&lock->semaphore);
 
@@ -298,8 +300,7 @@ void priority_turn_back(struct lock *lock){
       return;
     }
     if(lock_holder_thread->donate_num > 1){
-      lock_holder_thread->priority =
-        lock_holder_thread->donated_value_list[lock_holder_thread->donate_num - 2];
+      lock_holder_thread->priority = lock_holder_thread->donated_value_list[lock_holder_thread->donate_num - 2];
       lock_holder_thread->donated_value_list[lock_holder_thread->donate_num-1] = -1;
       lock_holder_thread->donate_num -= 1;
       // printf("turn back finish info 2; name,priority,donate_num : %s , %d, %d\n", lock_holder_thread->name, lock_holder_thread->priority, lock_holder_thread->donate_num);

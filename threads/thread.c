@@ -689,7 +689,7 @@ void BSD_update(int64_t ticks)
 void priority_update(void)
 {
   int i;
-  int f=0x1<<10;
+  int f=0x1<<14;
   struct list_elem *curr_list_elem;
   struct thread *curr_thread;
   ASSERT(thread_mlfqs);
@@ -699,6 +699,9 @@ void priority_update(void)
 
     for(i=0;i<list_size(&all_list);i++){
       curr_thread=list_entry(curr_list_elem, struct thread, allelem);
+
+      curr_thread->priority=(PRI_MAX*f-(curr_thread->recent_cpu)/4-(curr_thread->nice)*2*f+f/2)/f;
+
       curr_list_elem=curr_list_elem->next;
     }
   }
