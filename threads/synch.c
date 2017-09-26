@@ -46,7 +46,9 @@ static void wait_list_sort_desc();
 static bool is_desc(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 static void cond_list_sort_desc(struct condition *cond);
 static bool is_cond_desc(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
-void priority_turn_back();
+static void priority_turn_back();
+
+static void donate_var_sync(struct semaphore *sema);
 
 void
 sema_init (struct semaphore *sema, unsigned value)
@@ -209,23 +211,22 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
-  if(!(lock->holder == NULL) ){
+  if(lock->holder != NULL){
     if(lock->holder->priority < thread_current()->priority){
-    //    printf("priority donation occur, lock_holder init priority: %d, %d\n", lock->holder->init_priority, lock->holder->priority);
+        printf("priority DONATION occur, lock_holder init priority: %s, %d, %d\n", lock->holder->name, lock->holder->priority, lock->holder->donate_num);
         // printf("donating part\n");
         lock->holder->priority = thread_current()->priority;
         lock->holder->donate_num += 1;
         // push it prioity_value list (for multi-donate) - jm
-        lock->holder->donated_value_list[lock->holder->donate_num - 1]
-        = thread_current()->priority;
-
-        // printf("donated_priority and donate_num : %d , %d\n", lock->holder->priority, lock->holder->donate_num);
+        lock->holder->donated_value_list[lock->holder->donate_num - 1] = thread_current()->priority;
+        donate_var_sync(&(lock->semaphore));
+         printf("DONATION finish : name, donated_priority, donate_num : %s,  %d , %d\n", lock->holder->name, lock->holder->priority, lock->holder->donate_num);
       }
   }
-
   sema_down (&lock->semaphore);
+
   lock->holder = thread_current ();
-  // thread_current()->lock = lock;
+
 }
 
 
@@ -267,7 +268,7 @@ lock_release (struct lock *lock)
 }
 
 void priority_turn_back(struct lock *lock){
-    int donate_number = lock->holder->donate_num;
+    //int donate_number = lock->holder->donate_num;
     struct list *sema_list = &(lock->semaphore.waiters);
 
     if(list_size(sema_list) == 0){
@@ -277,11 +278,16 @@ void priority_turn_back(struct lock *lock){
       > lock->holder->priority){
         return;
     }
+    printf("priority TURN BACK occur: lock_holder name, priority, donate_num: %s, %d, %d\n", lock->holder->name, lock->holder->priority, lock->holder->donate_num);
+
     if(lock->holder->donate_num == 1){
       if(lock->holder->priority != lock->holder->init_priority){
         lock->holder->priority = lock->holder->init_priority;
       }
       lock->holder->donate_num = 0;
+      donate_var_sync(&(lock->semaphore));
+      printf("priority_TURN BACK case 1 finish: name, priority and donate_num : %s, %d , %d\n", lock->holder->name, lock->holder->priority, lock->holder->donate_num);
+      return;
     }
     if(lock->holder->donate_num > 1){
       // printf("Turn back part\n");
@@ -294,6 +300,9 @@ void priority_turn_back(struct lock *lock){
         lock->holder->donated_value_list[lock->holder->donate_num - 2];
       lock->holder->donated_value_list[lock->holder->donate_num-1] = -1;
       lock->holder->donate_num -= 1;
+      donate_var_sync(&(lock->semaphore));
+      printf("priority_TURN BACK case 2 finish: name, priority and donate_num : %s, %d , %d\n", lock->holder->name, lock->holder->priority, lock->holder->donate_num);
+      return;
     }
 }
 
@@ -400,6 +409,26 @@ static void wait_list_sort_desc(struct semaphore *sema){
   list_sort(&sema->waiters, is_desc, NULL);
 
   intr_set_level (old_level);
+}
+static void donate_var_sync(struct semaphore *sema){
+  struct thread* sema_waiters = list_begin(&sema->waiters);
+  struct thread* last_list = list_end(&sema->waiters);
+
+  if(list_empty(&sema->waiters)){
+    return;
+  }
+  printf("donate list is not empty. \n\n\n");
+  while(1){
+    int i=0;
+    sema_waiters->donate_num = thread_current()->donate_num;
+    while(thread_current()->donated_value_list[i] != -1){
+      (sema_waiters->donated_value_list)[i] = (thread_current()->donated_value_list)[i];
+      i++;
+    }
+    sema_waiters = list_entry(list_next(sema_waiters),struct thread, elem);
+    if(sema_waiters != last_list)
+      break;
+  }
 }
 
 static bool is_desc(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED){
