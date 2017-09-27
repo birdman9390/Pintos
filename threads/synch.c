@@ -61,18 +61,23 @@ void
 sema_down (struct semaphore *sema) 
 {
   enum intr_level old_level;
-
+  //printf("semadown!\n");
   ASSERT (sema != NULL);
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
   while (sema->value == 0) 
     {
-      list_push_back (&sema->waiters, &thread_current ()->elem);
+      list_insert_ordered (&sema->waiters, &thread_current ()->elem, high_priority, NULL);
+/*Just push in order will make waiter list in ordered as the priority will not change in the list 
+when we do Priority scheduling. We do not use this in Advanced Scheduler*/
+
       thread_block ();
     }
+  //printf("semdown!\n");
   sema->value--;
   intr_set_level (old_level);
+  //printf("semadown!\n");
 }
 
 /* Down or "P" operation on a semaphore, but only if the
@@ -114,10 +119,16 @@ sema_up (struct semaphore *sema)
 
   old_level = intr_disable ();
   if (!list_empty (&sema->waiters)) 
-    thread_unblock (list_entry (list_pop_front (&sema->waiters),
+  {
+      list_sort(&sema->waiters,high_priority,NULL);//added
+      thread_unblock (list_entry (list_pop_front (&sema->waiters),
                                 struct thread, elem));
+  }
   sema->value++;
+  //printf("semaup!\n");
+
   intr_set_level (old_level);
+//printf("semaup!\n");
 }
 
 static void sema_test_helper (void *sema_);

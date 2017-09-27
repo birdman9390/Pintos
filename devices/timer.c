@@ -20,6 +20,12 @@
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
 
+static int64_t wakeuptime[10];
+static struct thread *alarmthread[10];
+static int numofalarm=0;
+
+
+
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
@@ -37,6 +43,7 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+  //numofalarm=0;//modified
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -90,10 +97,17 @@ void
 timer_sleep (int64_t ticks) 
 {
   int64_t start = timer_ticks ();
-
+  enum intr_level old_level;
   ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  
+  wakeuptime[numofalarm]=start+ticks;
+  alarmthread[numofalarm]=thread_current();
+  numofalarm++;
+
+  old_level=intr_disable();
+   
+  thread_block();
+  intr_set_level(old_level);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -170,8 +184,39 @@ timer_print_stats (void)
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
+  int i,j;
   ticks++;
   thread_tick ();
+
+  i=0;
+  while(i<numofalarm)
+  {
+     if(timer_ticks()>=wakeuptime[i])
+     {
+         thread_unblock(alarmthread[i]);
+         
+         j=i;
+         while(j<numofalarm-1)
+         {
+             wakeuptime[j]=wakeuptime[j+1];
+             alarmthread[j]=alarmthread[j+1];
+             j++;
+         }
+         numofalarm--;
+     }
+     else
+         i++;
+  }
+
+  if(thread_mlfqs)
+  {
+     BSD_update(ticks);
+     if(ticks%4 == 0)
+     {
+          priority_update();
+     }
+  }
+
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
