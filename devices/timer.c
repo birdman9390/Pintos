@@ -98,15 +98,18 @@ timer_sleep (int64_t ticks)
 {
   int64_t start = timer_ticks ();
   enum intr_level old_level;
+printf("1");
   ASSERT (intr_get_level () == INTR_ON);
-  
+printf("2");
   wakeuptime[numofalarm]=start+ticks;
   alarmthread[numofalarm]=thread_current();
   numofalarm++;
-
+printf("3");
   old_level=intr_disable();
-   
+printf("4"); 
+//printf("%d",thread_current()->status==THREAD_RUNNING); 
   thread_block();
+printf("100");
   intr_set_level(old_level);
 }
 
@@ -210,6 +213,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
 
   if(thread_mlfqs)
   {
+//printf("Happy!\n");
      BSD_update(ticks);
      if(ticks%4 == 0)
      {

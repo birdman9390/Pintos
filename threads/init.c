@@ -95,19 +95,27 @@ main (void)
           init_ram_pages * PGSIZE / 1024);
 
   /* Initialize memory system. */
+printf("01");
   palloc_init (user_page_limit);
+printf("02");
   malloc_init ();
+printf("03");
   paging_init ();
-
+printf("04");
   /* Segmentation. */
 #ifdef USERPROG
+printf("05");
   tss_init ();
+printf("06");
   gdt_init ();
 #endif
 
   /* Initialize interrupt handlers. */
+printf("07");
   intr_init ();
+printf("08");
   timer_init ();
+printf("09");
   kbd_init ();
   input_init ();
 #ifdef USERPROG

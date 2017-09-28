@@ -232,10 +232,11 @@ thread_block (void)
 {
   ASSERT (!intr_context ());
   ASSERT (intr_get_level () == INTR_OFF);
-//  printf("Block!\n"); 
+//printf("Block!\n"); 
   thread_current ()->status = THREAD_BLOCKED;
+//printf("6");
   schedule ();
-  
+//printf("7");
 }
 
 /* Transitions a blocked thread T to the ready-to-run state.
@@ -640,11 +641,11 @@ void BSD_update(int64_t ticks)
    struct thread *curr_thread;
 
    ASSERT(thread_mlfqs);//only runs in mlfqs scheduler
-
+//printf("BSD_upd\n");
 
    thread_current()->recent_cpu += f;
 
-   if(ticks%TIMER_FREQ==0)
+   if(ticks%TIMER_FREQ==0&&!list_empty(&all_list))
    {
        temp_1 = 59*load_avg;
        temp_1 /= 60;
@@ -684,18 +685,28 @@ void priority_update(void)
    struct list_elem *curr_list_elem;
    struct thread *curr_thread;
 
-
+//printf("priority_update!\n");
    ASSERT(thread_mlfqs);
-
-   curr_list_elem = list_front(&all_list);
-   for(i=0;i<list_size(&all_list);i++)
-   {
-       curr_thread = list_entry(curr_list_elem, struct thread, elem);
-
-       curr_thread->priority = (PRI_MAX * f - (curr_thread->recent_cpu) / 4 - (curr_thread->nice * 2 * f)+f/2)/f;
-       curr_list_elem = curr_list_elem->next;
-   }
-   list_sort(&ready_list,high_priority,NULL);
-   if(list_entry(list_front(&ready_list), struct thread, elem)->priority > thread_current()->priority)
-       thread_yield();
+//   if(!list_empty(&all_list))
+//   {
+//printf("in list_empty before\n");
+      curr_list_elem = list_front(&all_list);
+//printf("1");
+      for(i=0;i<list_size(&all_list);i++)
+      {
+          curr_thread = list_entry(curr_list_elem, struct thread, elem);
+   
+          curr_thread->priority = (PRI_MAX * f - (curr_thread->recent_cpu) / 4 - (curr_thread->nice * 2 * f)+f/2)/f;
+          curr_list_elem = curr_list_elem->next;
+      }
+//printf("2");
+      list_sort(&ready_list,high_priority,NULL);
+//printf("3");
+      if(!list_empty(&ready_list))
+      {
+          if(list_entry(list_front(&ready_list), struct thread, elem)->priority > thread_current()->priority)
+               intr_yield_on_return();//thread_yield();
+      }
+//printf("in list_empty after\n");
+//   }
 }
