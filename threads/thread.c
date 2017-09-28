@@ -406,7 +406,15 @@ int
 thread_get_load_avg (void)
 {
   /* Not yet implemented. */
-  return (load_avg+(1<<7))>>8;
+//int i;
+//i=load_avg*100+8192;
+//i=i/16384;
+//printf("load_avg ; %d\n",i);
+//for(;;) barrier();
+//return i;
+//return (load_avg+2048)/4096;
+return ((load_avg*100)+8192)/16384;
+//  return ((load_avg*100)+8192)/16384;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
@@ -414,7 +422,15 @@ int
 thread_get_recent_cpu (void)
 {
   /* Not yet implemented. */
-  return (thread_current()->recent_cpu+(1<<7))>>8;
+//int i;
+//i=(thread_current()->recent_cpu)*100+8192;
+//i=i/16384;
+//printf("recent_cpu: %d\n",i);
+//for(;;) barrier();
+//return i;
+//return (load_avg+2048)/4096;
+return ((thread_current()->recent_cpu)*100+8192)/16384;
+//  return ((thread_current()->recent_cpu)*100+8192)/16384;
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -505,7 +521,10 @@ init_thread (struct thread *t, const char *name, int priority)
   t->donate_num = 0;
   t->magic = THREAD_MAGIC;
   if(thread_mlfqs)
+  {
     t->recent_cpu = 0;
+    t->nice = 0;
+  }
   list_push_back (&all_list, &t->allelem);
 }
 
@@ -655,21 +674,26 @@ uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
 void BSD_update(int64_t ticks)
 {
-  int f=1<<10;
+  int f=0x1<<14;
+  //int k=0x1<<10;
   int i=0;
   int temp_1, temp_2;
   struct list_elem *curr_list_elem;
   struct thread *curr_thread;
-
+//printf("%d,%d\n",f,k);
+enum intr_level old_level;
   ASSERT(thread_mlfqs);
 
+old_level=intr_disable();
+// printf("f : %d,%x\n",f,f);
   thread_current()->recent_cpu +=f;
 
   if(ticks%TIMER_FREQ==0&&!list_empty(&all_list))
   {
+//    printf("list_size: %d, f :%d, real_load_avg : %d\n",list_size(&ready_list),f,load_avg);
     temp_1=59*load_avg;
     temp_1/=60;
-    temp_2=list_size(&ready_list)*f;
+    temp_2=(list_size(&ready_list)+(thread_current()!=idle_thread))*f;
     temp_2/=60;
 
     load_avg=temp_1+temp_2;
@@ -681,28 +705,43 @@ void BSD_update(int64_t ticks)
     curr_list_elem=list_front(&all_list);
     for(i=0;i<list_size(&all_list);i++)
     {
-      curr_thread=list_entry(curr_list_elem, struct thread, elem);
+//printf("list_size :%d, recent : %d, load_avg : %d\n",list_size(&all_list),curr_thread->recent_cpu,load_avg);
+      curr_thread=list_entry(curr_list_elem, struct thread, allelem);
+//printf("good : %d\n", ((int64_t)temp_1)*(curr_thread->recent_cpu)/f+(curr_thread->nice)*f);
       curr_thread->recent_cpu=((int64_t)temp_1)*(curr_thread->recent_cpu)/f+(curr_thread->nice)*f;
       curr_list_elem=curr_list_elem->next;
     }
+ // printf("recent_cpu : %d, load_avg : %d, nice : %d\n",thread_get_recent_cpu(),thread_get_load_avg(),thread_get_nice());
   }
+intr_set_level(old_level);
+ // printf("load_avg(tick),f : %d(%d),%d\n",load_avg,ticks,f);
 }
 
 void priority_update(void)
 {
   int i;
-  int f=1<<10;
+  int f=0x1<<10;
   struct list_elem *curr_list_elem;
   struct thread *curr_thread;
+
   ASSERT(thread_mlfqs);
 
-  curr_list_elem=list_front(&all_list);
-
-  for(i=0;i<list_size(&all_list);i++)
+  if(!list_empty(&all_list))
   {
-    curr_thread=list_entry(curr_list_elem, struct thread, elem);
-    curr_thread->priority=(PRI_MAX*f-(curr_thread->recent_cpu)/4-(curr_thread->nice)*2*f+f/2)/f;
-    curr_list_elem=curr_list_elem->next;
+    curr_list_elem=list_front(&all_list);
+//printf("list size: %d\n",list_size(&all_list));
+ 
+    for(i=0;i<list_size(&all_list);i++)
+    {
+      curr_thread=list_entry(curr_list_elem, struct thread, allelem);
+//printf("what the fuck!\n");
+//printf("Run%d,Block%d,Ready%d\n",curr_thread->status==THREAD_RUNNING,curr_thread->status==THREAD_BLOCKED,curr_thread->status==THREAD_READY);
+
+//      if(curr_thread!=idle_thread)
+//        curr_thread->priority=PRI_DEFAULT;//(PRI_MAX*f-(curr_thread->recent_cpu)/4-(curr_thread->nice)*2*f+f/2)/f;
+//printf("after priority\n"); 
+     curr_list_elem=curr_list_elem->next;
+    }
+  //  ready_list_sort_desc();//should yield if priority change but not implement yet!
   }
-  ready_list_sort_desc();//should yield if priority change but not implement yet!
 }

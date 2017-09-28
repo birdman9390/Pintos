@@ -193,7 +193,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
     BSD_update(ticks);
     if(ticks%4 ==0)
     {
-//       priority_update();
+       priority_update();
     }
   }//added
 //  intr_set_level(old_level);

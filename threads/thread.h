@@ -151,6 +151,6 @@ void thread_preempt();
 void BSD_update(int64_t ticks);
 void priority_update(void);
 
-static int load_avg;
+int load_avg;
 
 #endif /* threads/thread.h */

@@ -140,7 +140,6 @@ test_mlfqs_load_avg (void)
   msg ("Starting threads took %d seconds.",
        timer_elapsed (start_time) / TIMER_FREQ);
   thread_set_nice (-20);
-
   for (i = 0; i < 90; i++) 
     {
       int64_t sleep_until = start_time + TIMER_FREQ * (2 * i + 10);
@@ -161,6 +160,7 @@ load_thread (void *seq_no_)
   int exit_time = TIMER_FREQ * (THREAD_CNT * 2);
 
   timer_sleep (sleep_time - timer_elapsed (start_time));
+
   while (timer_elapsed (start_time) < spin_time)
     continue;
   timer_sleep (exit_time - timer_elapsed (start_time));
