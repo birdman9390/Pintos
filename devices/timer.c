@@ -188,14 +188,14 @@ timer_interrupt (struct intr_frame *args UNUSED)
   ticks++;
 //  enum intr_level old_level;
 //  old_level=intr_disable();
-  if(thread_mlfqs)
+ /* if(thread_mlfqs)
   {
     BSD_update(ticks);
     if(ticks%4 ==0)
     {
        priority_update();
     }
-  }//added
+  }//added*/
 //  intr_set_level(old_level);
 
   thread_tick ();
@@ -215,6 +215,14 @@ timer_interrupt (struct intr_frame *args UNUSED)
     }
     else {
       i++;
+    }
+  }
+  if(thread_mlfqs)
+  {
+    BSD_update(ticks);
+    if(ticks%4==0)
+    {
+      priority_update();
     }
   }
 }

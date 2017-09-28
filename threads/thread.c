@@ -697,7 +697,7 @@ old_level=intr_disable();
     temp_2/=60;
 
     load_avg=temp_1+temp_2;
-
+printf("load_avg :%d,idle? : %d,list_size:%d\n",load_avg,thread_current()==idle_thread,list_size(&ready_list));
     temp_1=2*load_avg;
     temp_2=temp_1+f;
     temp_1=((int64_t)temp_1*f)/temp_2;
@@ -720,7 +720,7 @@ intr_set_level(old_level);
 void priority_update(void)
 {
   int i;
-  int f=0x1<<10;
+  int f=0x1<<14;
   struct list_elem *curr_list_elem;
   struct thread *curr_thread;
 
@@ -738,7 +738,7 @@ void priority_update(void)
 //printf("Run%d,Block%d,Ready%d\n",curr_thread->status==THREAD_RUNNING,curr_thread->status==THREAD_BLOCKED,curr_thread->status==THREAD_READY);
 
 //      if(curr_thread!=idle_thread)
-//        curr_thread->priority=PRI_DEFAULT;//(PRI_MAX*f-(curr_thread->recent_cpu)/4-(curr_thread->nice)*2*f+f/2)/f;
+        curr_thread->priority=(PRI_MAX*f-(curr_thread->recent_cpu)/4-(curr_thread->nice)*2*f+f/2)/f;
 //printf("after priority\n"); 
      curr_list_elem=curr_list_elem->next;
     }
