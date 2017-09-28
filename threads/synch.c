@@ -208,17 +208,17 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-
-  if(!(lock->holder == NULL) ){
-    if(lock->holder->priority < thread_current()->priority){
-    //    printf("priority donation occur, lock_holder init priority: %d, %d\n", lock->holder->init_priority, lock->holder->priority);
-
+  if(!thread_mlfqs)
+  {
+    if(!(lock->holder == NULL) ){
+      if(lock->holder->priority < thread_current()->priority){
+     //    printf("priority donation occur, lock_holder init priority: %d, %d\n", lock->holder->init_priority, lock->holder->priority);
         lock->holder->priority = thread_current()->priority;
         lock->holder->donate_num += 1;
     //    printf("donated_priority and donate_num : %d m%d\n", lock->holder->priority, lock->holder->donate_num);
       }
+    }
   }
-
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
   // thread_current()->lock = lock;
@@ -257,16 +257,17 @@ lock_release (struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
 
 //  printf("%d %d \n",lock->holder->priority, lock->holder->init_priority);
-  if(lock->holder->donate_num != 0){
-    if(lock->holder->priority != lock->holder->init_priority){
-      // printf("current lock holder : %s \nvalue : %d \ninit_value : %d\n"
-      //   ,lock->holder->name, lock->holder->priority, lock->holder->init_priority);
-      lock->holder->priority = lock->holder->init_priority;
-
+  if(!thread_mlfqs)
+  {
+    if(lock->holder->donate_num != 0){
+      if(lock->holder->priority != lock->holder->init_priority){
+        // printf("current lock holder : %s \nvalue : %d \ninit_value : %d\n"
+        //   ,lock->holder->name, lock->holder->priority, lock->holder->init_priority);
+        lock->holder->priority = lock->holder->init_priority;
+      }
+      lock->holder->donate_num = 0;
     }
-    lock->holder->donate_num = 0;
   }
-
 
   lock->holder = NULL;
   sema_up (&lock->semaphore);

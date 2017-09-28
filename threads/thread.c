@@ -697,7 +697,7 @@ old_level=intr_disable();
     temp_2/=60;
 
     load_avg=temp_1+temp_2;
-printf("load_avg :%d,idle? : %d,list_size:%d\n",load_avg,thread_current()==idle_thread,list_size(&ready_list));
+//printf("load_avg :%d,idle? : %d,list_size:%d\n",load_avg,thread_current()==idle_thread,list_size(&ready_list));
     temp_1=2*load_avg;
     temp_2=temp_1+f;
     temp_1=((int64_t)temp_1*f)/temp_2;
