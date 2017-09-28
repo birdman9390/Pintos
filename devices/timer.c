@@ -186,6 +186,18 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   int i, j;
   ticks++;
+//  enum intr_level old_level;
+//  old_level=intr_disable();
+  if(thread_mlfqs)
+  {
+    BSD_update(ticks);
+    if(ticks%4 ==0)
+    {
+//       priority_update();
+    }
+  }//added
+//  intr_set_level(old_level);
+
   thread_tick ();
 
   i = 0;

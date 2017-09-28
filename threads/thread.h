@@ -90,6 +90,10 @@ struct thread
     int init_priority;
     int priority;                       /* Priority. */
     int donate_num;               // how many donated priority.
+
+    int recent_cpu;
+    int nice;
+
     struct list_elem allelem;           /* List element for all threads list. */
     // struct lock *lock;
 
@@ -144,5 +148,9 @@ int thread_get_load_avg (void);
 
 void thread_preempt();
 
+void BSD_update(int64_t ticks);
+void priority_update(void);
+
+static int load_avg;
 
 #endif /* threads/thread.h */
