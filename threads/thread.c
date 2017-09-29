@@ -22,7 +22,7 @@
 
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
-static struct list ready_list;
+//struct list ready_list;
 
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
@@ -32,7 +32,7 @@ static struct list all_list;
 static struct thread *idle_thread;
 
 /* Initial thread, the thread running init.c:main(). */
-static struct thread *initial_thread;
+//static struct thread *initial_thread;
 
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
@@ -83,7 +83,7 @@ static bool is_desc(const struct list_elem *a, const struct list_elem *b, void *
 
    After calling this function, be sure to initialize the page
    allocator before trying to create any threads with
-   thread_create().
+   tedread_create().
 
    It is not safe to call thread_current() until this function
    finishes. */
@@ -208,10 +208,10 @@ thread_create (const char *name, int priority,
   sf->ebp = 0;
 
   intr_set_level (old_level);
-
+printf("1");
   /* Add to run queue. */
   thread_unblock (t);
-
+printf("2");
   // if the thread is highest priority,
   // this cannot go into thread_block(). It makes error.
   thread_preempt();
@@ -356,6 +356,7 @@ void
 thread_set_priority (int new_priority)
 {
   thread_current ()->priority = new_priority;
+  thread_current()->basic_priority=new_priority;
   thread_preempt();
 }
 
@@ -481,6 +482,8 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->basic_priority=priority;
+  list_init(&t->lock_list);
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
 }

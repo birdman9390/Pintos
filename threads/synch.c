@@ -209,9 +209,18 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-
+//printf("acquire!\n");
+  if(lock->semaphore.value==0){
+    if((lock->holder)->priority<thread_current()->priority)
+    {
+      (lock->holder)->priority=thread_current()->priority;
+    }
+    list_push_back(&thread_current()->lock_list,&lock->lockelem);
+//    list_push_back(&((lock->holder)->semaphore)->waiters,&thread_current()->elem);
+  }
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
+  
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -242,8 +251,44 @@ lock_try_acquire (struct lock *lock)
 void
 lock_release (struct lock *lock)
 {
+  struct list_elem *le;
+  struct list_elem *te;
+  struct lock *l;
+
+  struct thread *t;
+  int i,j;
+  int temp_priority=PRI_MIN;
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
+//printf("release!\n");
+  if(lock->holder->priority!=lock->holder->basic_priority)
+  {
+    if(!list_empty(&lock->holder->lock_list)){
+      le=list_front(&lock->holder->lock_list);
+      for(i=0;i<list_size(&lock->holder->lock_list);i++)
+      {
+        l=list_entry(le,struct lock, lockelem);
+        te=list_front(&l->semaphore.waiters);
+        for(j=0;j<list_size(&l->semaphore.waiters);j++)
+        {
+          t=list_entry(te,struct thread, elem);
+          if(t->priority>lock->holder->basic_priority&&t->priority>temp_priority)
+            temp_priority=t->priority;
+          te=te->next;
+        }
+        le=le->next;
+
+      }
+      if(lock->holder->basic_priority<temp_priority)
+        lock->holder->priority=temp_priority;
+
+      else
+        lock->holder->priority=lock->holder->basic_priority;
+    }
+    else
+      lock->holder->priority=lock->holder->basic_priority;
+
+  }
 
   lock->holder = NULL;
   sema_up (&lock->semaphore);
