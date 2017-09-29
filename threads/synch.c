@@ -76,6 +76,7 @@ sema_down (struct semaphore *sema)
   while (sema->value == 0)
     {
       list_push_back (&sema->waiters, &thread_current ()->elem);
+//printf("waiter size!:%d\n",list_size(&sema->waiters));
       wait_list_sort_desc(sema);
     //  printf("block is running");
       thread_block ();
@@ -209,18 +210,26 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-//printf("acquire!\n");
+  enum intr_level old_level;
+
+  old_level=intr_disable();
   if(lock->semaphore.value==0){
+//printf("sema=0\n");
     if((lock->holder)->priority<thread_current()->priority)
     {
+//printf("after pricompare\n");
+//printf("lockholderpri<currthreadprio,%d,%d,waiter: %d,locklist:%d\n",(lock->holder)->priority,thread_current()->priority,list_size(&lock->semaphore.waiters),list_size(&thread_current()->lock_list));
       (lock->holder)->priority=thread_current()->priority;
     }
-    list_push_back(&thread_current()->lock_list,&lock->lockelem);
+//   list_push_back(&thread_current()->lock_list,&lock->lockelem);
+//printf("waiter :%d,locklist:%d\n",list_size(&lock->semaphore.waiters),list_size(&thread_current()->lock_list));
 //    list_push_back(&((lock->holder)->semaphore)->waiters,&thread_current()->elem);
   }
   sema_down (&lock->semaphore);
+//printf("waiter:%d\n",list_size(&lock->semaphore.waiters));
   lock->holder = thread_current ();
-  
+  list_push_back(&thread_current()->lock_list,&lock->lockelem);
+  intr_set_level(old_level);
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -251,6 +260,7 @@ lock_try_acquire (struct lock *lock)
 void
 lock_release (struct lock *lock)
 {
+  enum intr_level old_level;
   struct list_elem *le;
   struct list_elem *te;
   struct lock *l;
@@ -260,6 +270,8 @@ lock_release (struct lock *lock)
   int temp_priority=PRI_MIN;
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
+
+old_level=intr_disable();
 //printf("release!\n");
   if(lock->holder->priority!=lock->holder->basic_priority)
   {
@@ -267,10 +279,12 @@ lock_release (struct lock *lock)
       le=list_front(&lock->holder->lock_list);
       for(i=0;i<list_size(&lock->holder->lock_list);i++)
       {
+printf("check locklist : %d\n",list_size(&lock->holder->lock_list));
         l=list_entry(le,struct lock, lockelem);
         te=list_front(&l->semaphore.waiters);
         for(j=0;j<list_size(&l->semaphore.waiters);j++)
         {
+printf("check waiterdlist:%d\n",list_size(&l->semaphore.waiters));
           t=list_entry(te,struct thread, elem);
           if(t->priority>lock->holder->basic_priority&&t->priority>temp_priority)
             temp_priority=t->priority;
@@ -292,6 +306,7 @@ lock_release (struct lock *lock)
 
   lock->holder = NULL;
   sema_up (&lock->semaphore);
+  intr_set_level(old_level);
 }
 
 /* Returns true if the current thread holds LOCK, false
