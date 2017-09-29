@@ -215,12 +215,12 @@ lock_acquire (struct lock *lock)
     {
       (lock->holder)->priority=thread_current()->priority;
     }
-    list_push_back(&thread_current()->lock_list,&lock->lockelem);
+//    list_push_back(&thread_current()->lock_list,&lock->lockelem);
 //    list_push_back(&((lock->holder)->semaphore)->waiters,&thread_current()->elem);
   }
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
-  
+  list_push_back(&thread_current()->lock_list,&lock->lockelem);
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -251,6 +251,7 @@ lock_try_acquire (struct lock *lock)
 void
 lock_release (struct lock *lock)
 {
+  enum intr_level old_level;
   struct list_elem *le;
   struct list_elem *te;
   struct lock *l;
@@ -260,17 +261,25 @@ lock_release (struct lock *lock)
   int temp_priority=PRI_MIN;
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
+  old_level=intr_disable();
 //printf("release!\n");
   if(lock->holder->priority!=lock->holder->basic_priority)
   {
+//printf("1");
     if(!list_empty(&lock->holder->lock_list)){
       le=list_front(&lock->holder->lock_list);
+//printf("size:%d",list_size(&lock->holder->lock_list));
+//printf("2222222");
+//printf("size:%d",list_size(&lock->holder->lock_list));
       for(i=0;i<list_size(&lock->holder->lock_list);i++)
       {
+//printf("3");
         l=list_entry(le,struct lock, lockelem);
-        te=list_front(&l->semaphore.waiters);
+        if(!list_empty(&l->semaphore.waiters))
+          te=list_front(&l->semaphore.waiters);
         for(j=0;j<list_size(&l->semaphore.waiters);j++)
         {
+//printf("4");
           t=list_entry(te,struct thread, elem);
           if(t->priority>lock->holder->basic_priority&&t->priority>temp_priority)
             temp_priority=t->priority;
@@ -289,9 +298,19 @@ lock_release (struct lock *lock)
       lock->holder->priority=lock->holder->basic_priority;
 
   }
-
+  le=list_front(&lock->holder->lock_list);
+  for(i=0;i<list_size(&lock->holder->lock_list);i++)
+  {
+    l=list_entry(le,struct lock, lockelem);
+    if(l==lock) list_remove(le);
+    le=le->next;
+  }
+//printf("releasesuccess\n");
   lock->holder = NULL;
   sema_up (&lock->semaphore);
+//printf("aftersemaup");
+
+  intr_set_level(old_level);
 }
 
 /* Returns true if the current thread holds LOCK, false
