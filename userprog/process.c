@@ -195,7 +195,7 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-static bool setup_stack (void **esp);
+static bool setup_stack (void **esp,char* filename, char** rest_of_filename);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
@@ -214,6 +214,11 @@ load (const char *file_name, void (**eip) (void), void **esp)
   off_t file_ofs;
   bool success = false;
   int i;
+  char* rest_of_filename;
+  
+  file_name = strtok_r(file_name," ",&rest_of_filename);
+  //ex) file_name : ls -l foo bar -> file_name : ls
+  //                                 rest_of_filename : -l foo bar
 
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
@@ -302,7 +307,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
     }
 
   /* Set up stack. */
-  if (!setup_stack (esp))
+  if (!setup_stack (esp,file_name, &rest_of_filename))
     goto done;
 
   /* Start address. */
@@ -427,10 +432,15 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
 static bool
-setup_stack (void **esp) 
+setup_stack (void **esp,char* filename,char** rest_of_filename) 
 {
   uint8_t *kpage;
   bool success = false;
+  char* argument;
+  char** argv;
+  int argv_size=1;
+  int argc=0;
+  int i;
 
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
@@ -441,6 +451,52 @@ setup_stack (void **esp)
       else
         palloc_free_page (kpage);
     }
+
+  argv=malloc(sizeof(char*));
+
+  for(argument=filename;argument!=NULL;argument=strtok_r(NULL," ",rest_of_filename))
+  {
+    argv_size++;
+    argv=realloc(argv,argv_size*sizeof(char*));//allocate memory for argument!
+
+    *esp-=strlen(argument)+1;
+    argv[argc]=*esp;
+    memcpy(*esp,argument,strlen(argument)+1);
+    argc++;
+  }
+//Put argument inside the stack
+
+  argv[argc]=0;
+  i=(size_t)*esp%4;
+  if(i!=0)
+  {
+    *esp-=i;
+    memcpy(*esp,&argv[argc],i);
+  }
+//word_align done
+
+  for(i=argc;i>=0;i--)
+  {
+    *esp-=sizeof(char*);
+    memcpy(*esp,&argv[i],sizeof(char*));
+  }
+//Put the address of argument inside the stack
+
+  argument=*esp;
+  *esp-=sizeof(char**);
+  memcpy(*esp,&argument,sizeof(char**));
+//Put argv**
+
+  *esp-=sizeof(int);
+  memcpy(*esp,&argc,sizeof(int));
+//Put argc
+
+  *esp-=sizeof(void*);
+  memcpy(*esp,&argv[argc],sizeof(void*));
+//Put return address
+
+hex_dump(0,*esp,(int)((size_t)PHYS_BASE-(size_t)*esp),true);
+
   return success;
 }
 

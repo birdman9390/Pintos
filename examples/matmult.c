@@ -45,7 +45,7 @@ main (void)
 	B[i][j] = j;
 	C[i][j] = 0;
       }
-
+printf("asdfasdf\n\n\n\n\n");
   /* Multiply matrices. */
   for (i = 0; i < DIM; i++)	
     for (j = 0; j < DIM; j++)
