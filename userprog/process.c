@@ -88,6 +88,11 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
+  int i=0;
+  while(1)
+  {
+    i=0;
+  }
   return -1;
 }
 
@@ -215,8 +220,18 @@ load (const char *file_name, void (**eip) (void), void **esp)
   bool success = false;
   int i;
   char* rest_of_filename;
-  
+//file_name="args_multiple a bb ccc";  
+/*printf("file_name : %s\n",file_name);
+for(i=0;i<25;i++)
+{
+printf("%c\n",*(file_name+i*sizeof(char)));
+
+}
+printf("\n");
+*/
   file_name = strtok_r(file_name," ",&rest_of_filename);
+
+//printf("after parsing!\n");
   //ex) file_name : ls -l foo bar -> file_name : ls
   //                                 rest_of_filename : -l foo bar
 
@@ -441,7 +456,9 @@ setup_stack (void **esp,char* filename,char** rest_of_filename)
   int argv_size=1;
   int argc=0;
   int i;
+int count=0;
 
+  uint32_t esp_temp;
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
@@ -452,20 +469,25 @@ setup_stack (void **esp,char* filename,char** rest_of_filename)
         palloc_free_page (kpage);
     }
 
-  argv=malloc(sizeof(char*));
+  for(i=0;(*rest_of_filename)[i]!=NULL;i++)
+  {
+    if((*rest_of_filename)[i]==' ')
+      count++;
+  }
+
+  *esp-=strlen(filename)+strlen(*rest_of_filename)+2;
+  esp_temp=*esp;
+  argv=malloc(sizeof(char*)*(count+3));
 
   for(argument=filename;argument!=NULL;argument=strtok_r(NULL," ",rest_of_filename))
   {
-    argv_size++;
-    argv=realloc(argv,argv_size*sizeof(char*));//allocate memory for argument!
 
-    *esp-=strlen(argument)+1;
     argv[argc]=*esp;
     memcpy(*esp,argument,strlen(argument)+1);
+    *esp+=strlen(argument)+1;
     argc++;
   }
-//Put argument inside the stack
-
+  *esp=esp_temp;
   argv[argc]=0;
   i=(size_t)*esp%4;
   if(i!=0)
@@ -495,7 +517,7 @@ setup_stack (void **esp,char* filename,char** rest_of_filename)
   memcpy(*esp,&argv[argc],sizeof(void*));
 //Put return address
 
-hex_dump(0,*esp,(int)((size_t)PHYS_BASE-(size_t)*esp),true);
+hex_dump(*esp,*esp,(int)((size_t)PHYS_BASE-(size_t)*esp),true);
 
   return success;
 }
