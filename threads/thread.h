@@ -95,6 +95,8 @@ struct thread
 
     struct thread *parent;
     struct thread *child;
+    bool is_waiting;
+    int waiting_status;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
