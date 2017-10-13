@@ -150,7 +150,7 @@ tid_t syscall_exec(const char *cmd_line)
   }
   else if(thread_current()->child->is_loaded==load_fail)
   {
-    thread_current()->child=NULL;
+//    thread_current()->child=NULL;
     return -1;
   }
   return t;
@@ -238,7 +238,6 @@ int syscall_read (int fd, void *buffer, unsigned size)
 
 int syscall_write (int fd, const void *buffer, unsigned size)
 {
-//printf("write");
   int returnVal;
   lock_acquire(&file_lock);
   if (fd == STDOUT_FILENO){
