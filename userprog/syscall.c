@@ -224,6 +224,8 @@ int syscall_read (int fd, void *buffer, unsigned size)
   int bytes_read;
   if(fd==0)
   {
+  lock_release(&file_lock);
+  return 0;
   //get input by input_getc
   }
   else if(f!=NULL)
@@ -246,6 +248,7 @@ int syscall_write (int fd, const void *buffer, unsigned size)
 
   if (fd == STDOUT_FILENO){
     putbuf((char *)buffer, (size_t)size);
+    lock_release(&file_lock);
     return (int)size;
   }
   else if(f!=NULL)
