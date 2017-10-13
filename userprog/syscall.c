@@ -131,6 +131,7 @@ void syscall_halt()
 
 void syscall_exit(int status)
 {
+//printf("exit");
   if(status == -1){
     //error 처리
   }
@@ -148,7 +149,10 @@ tid_t syscall_exec(const char *cmd_line)
     return -1;
   }
   else if(thread_current()->child->is_loaded==load_fail)
+  {
+    thread_current()->child=NULL;
     return -1;
+  }
   return t;
 }
 

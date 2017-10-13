@@ -118,7 +118,6 @@ process_wait (tid_t child_tid UNUSED)
   {
     barrier();
   }
-
 /*
     enum intr_level old_level = intr_disable ();
     thread_block();
