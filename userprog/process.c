@@ -47,12 +47,14 @@ process_execute (const char *file_name)
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
 
   // add child pointer - JONGMIN
-  list_push_back(&thread_current()->child_list,&get_thread(tid)->child_elem);
+  if(thread_current()->is_loaded==load_success)
+  {
+    list_push_back(&thread_current()->child_list,&get_thread(tid)->child_elem);
 //  thread_current()->child->parent=thread_current();
-  get_thread(tid)->parent = thread_current();
-  list_entry(list_back(&thread_current()->child_list),struct thread, child_elem)->is_waiting=false;
+    get_thread(tid)->parent = thread_current();
+    list_entry(list_back(&thread_current()->child_list),struct thread, child_elem)->is_waiting=false;
 //  thread_current()->child->is_waiting==false;//modified
-
+  }
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
   return tid;
@@ -74,8 +76,9 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
 
-  if(success==0&&list_size(&thread_current()->child_list)!=0)
-    list_entry(list_back(&thread_current()->child_list),struct thread, child_elem)->is_loaded=load_fail;
+  if(success==0)
+    thread_current()->is_loaded=load_fail;
+//list_entry(list_back(&thread_current()->child_list),struct thread, child_elem)->is_loaded=load_fail;
 //    thread_current()->child->is_loaded=load_success;
 //  else
 //    thread_current()->child->is_loaded=load_fail;

@@ -148,9 +148,10 @@ tid_t syscall_exec(const char *cmd_line)
   {
     return -1;
   }
-  else if(list_entry(list_back(&thread_current()->child_list),struct thread,child_elem)->is_loaded==load_fail)
+  else if(thread_current()->is_loaded==load_fail)
   {
-    list_pop_back(&thread_current()->child_list);
+//    list_pop_back(&thread_current()->child_list);
+    thread_current()->is_loaded=load_success;
     return -1;
   }
   return t;
