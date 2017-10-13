@@ -48,6 +48,7 @@ process_execute (const char *file_name)
 
   // add child pointer - JONGMIN
   thread_current()->child = get_thread(tid);
+//  thread_current()->child->parent=thread_current();
   get_thread(tid)->parent = thread_current();
   thread_current()->child->is_waiting==false;//modified
 
@@ -124,7 +125,7 @@ process_wait (tid_t child_tid UNUSED)
     intr_set_level (old_level);
 */
 // return child_tid;
-  cur->status=cur->waiting_status;
+//printf("waiting status : %d\n",cur->waiting_status);
   return cur->waiting_status;
 }
 
@@ -138,7 +139,7 @@ process_exit (void)
     if(thread_current()->parent->is_waiting == true )
     {
       thread_current()->parent->is_waiting=false;
-      thread_current()->parent->waiting_status=thread_current()->status;
+      //thread_current()->parent->waiting_status=thread_current()->status;
     }
     thread_current()->parent->child = NULL;
     thread_current()->parent = NULL;

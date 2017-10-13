@@ -134,7 +134,7 @@ void syscall_exit(int status)
   if(status == -1){
     //error 처리
   }
- // thread_current()->parent->status=status;
+  thread_current()->parent->waiting_status=status;
   printf ("%s: exit(%d)\n", thread_current()->name, status);
   thread_exit();
 }
