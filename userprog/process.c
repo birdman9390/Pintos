@@ -114,6 +114,7 @@ process_wait (tid_t child_tid UNUSED)
     intr_set_level (old_level);
 */
 // return child_tid;
+  cur->status=cur->waiting_status;
   return cur->waiting_status;
 }
 

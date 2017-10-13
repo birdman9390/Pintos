@@ -134,33 +134,40 @@ void syscall_exit(int status)
   if(status == -1){
     //error 처리
   }
+ // thread_current()->parent->status=status;
   printf ("%s: exit(%d)\n", thread_current()->name, status);
   thread_exit();
 }
 
 tid_t syscall_exec(const char *cmd_line)
 {
+//printf("exec");
   return process_execute(cmd_line);
 }
 
 int syscall_wait(tid_t _pid)
 {
+//printf("wait");
   return process_wait(_pid);      // pid of child process. will start
 }
 bool syscall_create (const char *file, unsigned initial_size)
 {
+//printf("create");
   return filesys_create(file, initial_size);
 }
 bool syscall_remove (const char *file)
 {
+//printf("remove");
   return filesys_remove(file);
 }
 int syscall_open (const char *file)
 {
+//printf("open");
   int returnVal;
   lock_acquire(&file_lock);
   struct file *f = filesys_open(file);  // file open
-  if(!f){
+  if(f==NULL){
+//    printf("cannot open f\n");
     returnVal = -1;
   }  // file is not open
   else {
@@ -174,10 +181,12 @@ int syscall_open (const char *file)
     returnVal = file_pointer->fd;
   }
   lock_release(&file_lock);
+//  printf("returnVal for open : %d\n",returnVal);
   return returnVal;
 }
 int syscall_filesize (int fd)
 {
+//printf("filesize");
   int returnVal;
   lock_acquire(&file_lock);
   struct file *f = get_file_fd(fd);
@@ -189,7 +198,9 @@ int syscall_filesize (int fd)
   lock_release(&file_lock);
   return returnVal;
 }
-int syscall_read (int fd, void *buffer, unsigned size){
+int syscall_read (int fd, void *buffer, unsigned size)
+{
+//printf("read");
   // size 만큼을 읽어서 buffer에 쓴다.
   int returnVal;
   lock_acquire(&file_lock);
@@ -216,6 +227,7 @@ int syscall_read (int fd, void *buffer, unsigned size){
 
 int syscall_write (int fd, const void *buffer, unsigned size)
 {
+//printf("write");
   int returnVal;
   lock_acquire(&file_lock);
   if (fd == STDOUT_FILENO){
@@ -235,7 +247,9 @@ int syscall_write (int fd, const void *buffer, unsigned size)
   return returnVal;
 }
 
-void syscall_seek(int fd, unsigned position){
+void syscall_seek(int fd, unsigned position)
+{
+//printf("seek");
   lock_acquire(&file_lock);
   struct file *f = get_file_fd(fd);
   if(f == NULL){}
@@ -245,7 +259,9 @@ void syscall_seek(int fd, unsigned position){
   lock_release(&file_lock);
 }
 
-unsigned syscall_tell(int fd){
+unsigned syscall_tell(int fd)
+{
+//printf("tell");
   unsigned returnVal;
   lock_acquire(&file_lock);
   struct file *f = get_file_fd(fd);
@@ -257,21 +273,31 @@ unsigned syscall_tell(int fd){
   lock_release(&file_lock);
   return returnVal;
 }
-void syscall_close(int fd){
+void syscall_close(int fd)
+{
+//printf("close\n");
   lock_acquire(&file_lock);
   struct thread *t = thread_current();
   struct list_elem *e;
+//printf("we called close!\n");
 
   for(e = list_begin(&t->file_list); e != list_end(&t->file_list);e = list_next(e)){
     struct file_element *file_pointer = list_entry(e, struct file_element,elem);
-    if(fd == file_pointer->fd){
+//printf("Now checking!\n");
+    if(file_pointer==NULL)
+      break;
+    else if(fd == file_pointer->fd){
+//      printf("close sucess!\n");
       file_close(file_pointer->file);
       list_remove(&file_pointer->elem);
       free(file_pointer);
+      break;
     }
+//printf("if done?\n");
     // process exit 의 경우에는 모든 fd를 지워준다.
     //(all closing case) should be added
   }
+//printf("after close\n");
   lock_release(&file_lock);
 }
 
