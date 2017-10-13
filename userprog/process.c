@@ -72,10 +72,11 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
 
-  if(success)
-    thread_current()->child->is_loaded=load_success;
-  else
+  if(success==0&&thread_current()->child!=NULL)
     thread_current()->child->is_loaded=load_fail;
+//    thread_current()->child->is_loaded=load_success;
+//  else
+//    thread_current()->child->is_loaded=load_fail;
 
 
   /* If load failed, quit. */

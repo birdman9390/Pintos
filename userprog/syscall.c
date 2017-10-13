@@ -143,11 +143,12 @@ tid_t syscall_exec(const char *cmd_line)
 {
 //printf("exec");
   tid_t t=process_execute(cmd_line);
-  if(thread_current()->child->is_loaded==load_fail)
+  if(thread_current()->child==NULL)
   {
-//    thread_current()->child=NULL;
-//    return -1;
+    return -1;
   }
+  else if(thread_current()->child->is_loaded==load_fail)
+    return -1;
   return t;
 }
 
