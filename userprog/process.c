@@ -47,10 +47,11 @@ process_execute (const char *file_name)
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
 
   // add child pointer - JONGMIN
-  thread_current()->child = get_thread(tid);
+  list_push_back(&thread_current()->child_list,&get_thread(tid)->child_elem);
 //  thread_current()->child->parent=thread_current();
   get_thread(tid)->parent = thread_current();
-  thread_current()->child->is_waiting==false;//modified
+  list_entry(list_back(&thread_current()->child_list),struct thread, child_elem)->is_waiting=false;
+//  thread_current()->child->is_waiting==false;//modified
 
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
@@ -73,8 +74,8 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
 
-  if(success==0&&thread_current()->child!=NULL)
-    thread_current()->child->is_loaded=load_fail;
+  if(success==0&&list_size(&thread_current()->child_list)!=0)
+    list_entry(list_back(&thread_current()->child_list),struct thread, child_elem)->is_loaded=load_fail;
 //    thread_current()->child->is_loaded=load_success;
 //  else
 //    thread_current()->child->is_loaded=load_fail;
@@ -108,11 +109,11 @@ int
 process_wait (tid_t child_tid UNUSED)
 {
   struct thread* cur = thread_current();
-  if(!cur->child){
+  if(list_size(&cur->child_list)==0){
     return -1;
   }
-  if(cur->is_waiting)
-    return -1;
+//  if(cur->is_waiting)
+//    return -1;
   cur->is_waiting=true;
   while(cur->is_waiting==true)
   {
@@ -132,20 +133,29 @@ process_wait (tid_t child_tid UNUSED)
 void
 process_exit (void)
 {
-  struct thread *cur = thread_current ();
+  struct thread *par = thread_current ()->parent;
   uint32_t *pd;
-  if(thread_current()->parent != get_idle_thread()){
-    if(thread_current()->parent->is_waiting == true )
+
+  
+  struct list_elem *ce;
+  if(par != get_idle_thread()){
+    for(ce=list_begin(&par->child_list);ce!=list_end(&par->child_list);ce=list_next(ce))
     {
-      thread_current()->parent->is_waiting=false;
-      //thread_current()->parent->waiting_status=thread_current()->status;
+      struct thread *t=list_entry(ce, struct thread, child_elem);
+      if(thread_current()->tid==t->tid)
+      {
+        list_remove(ce);
+        break;
+      }
     }
-    thread_current()->parent->child = NULL;
+    if(par->is_waiting==true&&list_size(&par->child_list)==0)
+      par->is_waiting=false;
+    //thread_current()->parent->child = NULL;
     thread_current()->parent = NULL;
   }
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
-  pd = cur->pagedir;
+  pd = thread_current()->pagedir;
   if (pd != NULL)
     {
       /* Correct ordering here is crucial.  We must set
@@ -155,7 +165,7 @@ process_exit (void)
          directory before destroying the process's page
          directory, or our active page directory will be one
          that's been freed (and cleared). */
-      cur->pagedir = NULL;
+      thread_current()->pagedir = NULL;
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }

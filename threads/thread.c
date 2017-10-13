@@ -488,6 +488,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_push_back (&all_list, &t->allelem);
 
   list_init(&t->file_list);
+  list_init(&t->child_list);
   t->fd = 2;              // 우선 Standard Error로 초기화. 새로운 파일 오픈을 하거나 소켓 생성 시 + 1을 통해 일반적인 값으로 바꿈.
 }
 
