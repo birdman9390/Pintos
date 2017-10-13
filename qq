@@ -1,0 +1,59 @@
+[33mcommit 13d2bd4b25bb5f610f4df8ac477ad2f5b74b7cef[m
+Merge: 82f88f1 443cde5
+Author: bluedream1121 <ljm1121@postech.ac.kr>
+Date:   Tue Oct 31 03:08:12 2017 +0900
+
+    Merge pull request #2 from bluedream1121/master_proj2
+    
+    Master proj2
+
+[33mcommit 443cde50467032ee32ba17272cdfe37ece3e1d1c[m
+Author: Jongmin Lee <ljm1121@postech.ac.kr>
+Date:   Mon Oct 30 10:44:10 2017 -0700
+
+    먼저 exec과 wait가 안돌아가는 자잘한 버그부터 수정하고 나머지 system call을 구현하면 좋을 듯 싶다.
+
+[33mcommit 48a53af6bfbe3f66a3349d7cd6906d1459a5e0fe[m
+Author: Jongmin Lee <ljm1121@postech.ac.kr>
+Date:   Mon Oct 30 10:20:33 2017 -0700
+
+    change syscall_exit mistake and implement create and remove (52/76 fail)
+
+[33mcommit 380744699e8e697cbaf7879a733fc1014786a864[m
+Author: Jongmin Lee <ljm1121@postech.ac.kr>
+Date:   Mon Oct 30 10:08:26 2017 -0700
+
+    process termination message success (65/76 fail)
+
+[33mcommit 0479455eb71e0e28e96dda6d919c17996f83e473[m
+Author: Jongmin Lee <ljm1121@postech.ac.kr>
+Date:   Mon Oct 30 09:51:28 2017 -0700
+
+    success to execute user program
+
+[33mcommit 82f88f1cb94f3469cca8e4c6c8d1b8a4441f3ad6[m
+Merge: 6a849f9 3bfb76e
+Author: bluedream1121 <ljm1121@postech.ac.kr>
+Date:   Tue Oct 31 00:28:52 2017 +0900
+
+    Merge pull request #1 from bluedream1121/master_proj2
+    
+    실행은 잘 되지만 뭔가 이상한 상태
+
+[33mcommit 3bfb76e37e5321753d77bb42d77a2297373abfd4[m
+Author: Jongmin Lee <ljm1121@postech.ac.kr>
+Date:   Mon Oct 30 07:25:03 2017 -0700
+
+    실행은 잘 되지만 뭔가 이상한 상태
+
+[33mcommit 6a849f9f997661c97aae7b4d24ae3912e3fabfb8[m
+Author: os <os@ubuntu.(none)>
+Date:   Mon Oct 2 11:14:54 2017 -0700
+
+    project 2 start
+
+[33mcommit 2ee197de7b0a40a8cff423c8a9faa6d4d262bc16[m
+Author: JaeYeop <birdman9391@postech.ac.kr>
+Date:   Tue Sep 5 22:22:25 2017 -0700
+
+    initial commit
