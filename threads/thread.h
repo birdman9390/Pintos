@@ -102,6 +102,9 @@ struct thread
     bool is_waiting;
     int waiting_status;
     int is_loaded;
+
+    struct list file_list;
+    int fd;
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */

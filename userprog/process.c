@@ -47,16 +47,19 @@ process_execute (const char *file_name)
   thread_current()->child = get_thread(tid);
   get_thread(tid)->parent = thread_current();
   thread_current()->child->is_waiting==false;//modified
-
-  while(thread_current()->child->is_loaded==load_unloaded)
+//  printf("child is null?? :%d!!!!!!!!!!!!!\n",thread_current()->child==NULL);
+/*  while(thread_current()->child->is_loaded==load_unloaded)
   {
     barrier();
   }
+*/
   if(thread_current()->child->is_loaded==load_fail)
     tid=TID_ERROR;
 
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
+//  if(thread_current()->child->is_loaded==load_fail)
+//    tid=TID_ERROR;
   return tid;
 }
 
@@ -75,11 +78,16 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
-  if(success)
-    thread_current()->child->is_loaded=load_success;
-  else
-    thread_current()->child->is_loaded=load_fail;
 
+//printf("success : %d\n",success);
+//printf("there is no child, if true(1), false(0) : %d\n",thread_current()->child==NULL);
+  if(thread_current()->child!=NULL)
+  { 
+    if(success)
+      thread_current()->child->is_loaded=load_success;
+    else
+      thread_current()->child->is_loaded=load_fail;
+  }
 
   /* If load failed, quit. */
   palloc_free_page (file_name);

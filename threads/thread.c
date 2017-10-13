@@ -487,6 +487,10 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   t->is_loaded=load_unloaded;
   list_push_back (&all_list, &t->allelem);
+
+  list_init(&t->file_list);
+  t->fd=2;//tid starts from 2
+
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
