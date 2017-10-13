@@ -48,6 +48,13 @@ process_execute (const char *file_name)
   get_thread(tid)->parent = thread_current();
   thread_current()->child->is_waiting==false;//modified
 
+  while(thread_current()->child->is_loaded==load_unloaded)
+  {
+    barrier();
+  }
+  if(thread_current()->child->is_loaded==load_fail)
+    tid=TID_ERROR;
+
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
   return tid;
@@ -68,6 +75,11 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
+  if(success)
+    thread_current()->child->is_loaded=load_success;
+  else
+    thread_current()->child->is_loaded=load_fail;
+
 
   /* If load failed, quit. */
   palloc_free_page (file_name);

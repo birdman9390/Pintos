@@ -23,6 +23,10 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+#define load_success 1
+#define load_fail 0
+#define load_unloaded -1
+
 
 /* A kernel thread or user process.
 
@@ -97,7 +101,7 @@ struct thread
     struct thread *child;
     bool is_waiting;
     int waiting_status;
-
+    int is_loaded;
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
