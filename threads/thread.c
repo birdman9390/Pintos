@@ -28,6 +28,7 @@ static struct list ready_list;
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
 
+struct lock exit_lock;
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -89,6 +90,7 @@ thread_init (void)
 {
   ASSERT (intr_get_level () == INTR_OFF);
 
+  lock_init (&exit_lock);
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
@@ -108,13 +110,15 @@ thread_start (void)
   /* Create the idle thread. */
   struct semaphore idle_started;
   sema_init (&idle_started, 0);
+printf("threadstart1\n");
   thread_create ("idle", PRI_MIN, idle, &idle_started);
-
+printf("threadstart2\n");
   /* Start preemptive thread scheduling. */
   intr_enable ();
-
+printf("threadstart3\n");
   /* Wait for the idle thread to initialize idle_thread. */
   sema_down (&idle_started);
+printf("threadstart4\n");
 }
 
 /* Called by the timer interrupt handler at each timer tick.
@@ -184,6 +188,15 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
 
+  /* Set parent and child relationship*/
+  if(tid==1)
+    t->parent=NULL;
+  else
+  {
+    thread_current()->child=t;
+    t->parent=thread_current();
+  }
+
   /* Prepare thread for first run by initializing its stack.
      Do this atomically so intermediate values for the 'stack' 
      member cannot be observed. */
@@ -207,7 +220,8 @@ thread_create (const char *name, int priority,
   intr_set_level (old_level);
 
   /* Add to run queue. */
-  thread_unblock (t);
+//  if(tid==1)
+    thread_unblock (t);
 
   return tid;
 }
@@ -300,7 +314,12 @@ thread_exit (void)
   intr_disable ();
   list_remove (&thread_current()->allelem);
   thread_current ()->status = THREAD_DYING;
+
+  lock_acquire(&exit_lock);
+  thread_unblock(list_entry(list_back(&all_list),struct thread,allelem));
   schedule ();
+  lock_release(&exit_lock);
+
   NOT_REACHED ();
 }
 
@@ -318,7 +337,11 @@ thread_yield (void)
   if (cur != idle_thread) 
     list_push_back (&ready_list, &cur->elem);
   cur->status = THREAD_READY;
+
+  lock_acquire(&exit_lock);
   schedule ();
+  lock_acquire(&exit_lock);
+
   intr_set_level (old_level);
 }
 

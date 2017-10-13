@@ -4,11 +4,12 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
+typedef int pid_t;
 static void syscall_handler (struct intr_frame *);
 void syscall_halt();
-void syscall_exit();
-void syscall_exec();
-void syscall_wait();
+void syscall_exit(int status);
+pid_t syscall_exec(const char* cmd_line);
+int syscall_wait(pid_t pid);
 void syscall_create();
 void syscall_remove();
 void syscall_open();
@@ -34,11 +35,14 @@ syscall_handler (struct intr_frame *f UNUSED)
   case SYS_HALT:
     syscall_halt();
   case SYS_EXIT:
-    syscall_exit();
+    syscall_exit(*((int*)f->esp+1));
   case SYS_EXEC:
-    syscall_exec();
+  {
+    char *str=*(char **)(f->esp+4);
+    syscall_exec(str);
+  }
   case SYS_WAIT:
-    syscall_wait();
+    syscall_wait(*((int*)f->esp+1));
   case SYS_CREATE:
     syscall_create();
   case SYS_REMOVE:
@@ -66,18 +70,26 @@ syscall_handler (struct intr_frame *f UNUSED)
 void syscall_halt()
 {
 printf("halt\n");
+  shutdown_power_off();
 }
-void syscall_exit()
+void syscall_exit(int status)
 {
 printf("exit\n");
+  if(thread_current()->parent==NULL)
+    thread_current()->parent->status=status;
+  printf("%s: exit(%d)\n",thread_current()->name,status);
+  thread_exit();
 }
-void syscall_exec()
+pid_t syscall_exec(const char* cmd_line)
 {
 printf("exec\n");
+  pid_t pid=process_execute(cmd_line);
+  return pid;
 }
-void syscall_wait()
+int syscall_wait(pid_t pid)
 {
 printf("wait\n");
+  return process_wait(pid);
 }
 void syscall_create()
 {
@@ -101,17 +113,17 @@ printf("read\n");
 }
 void syscall_write()
 {
-printf("write\n");
+//printf("write\n");
 }
 void syscall_seek()
 {
-printf("seek\n");
+//printf("seek\n");
 }
 void syscall_tell()
 {
-printf("tell\n");
+//printf("tell\n");
 }
 void syscall_close()
 {
-printf("close\n");
+//printf("close\n");
 }

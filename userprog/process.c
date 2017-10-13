@@ -88,12 +88,18 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  int i=0;
-  while(1)
+  if(thread_current()->child==NULL)
+    return -1;
+  else
   {
-    i=0;
+    if(thread_current()->child->tid!=child_tid)
+      return -1;
+    else
+    {
+      thread_block();
+      return thread_current()->child->status;
+    }
   }
-  return -1;
 }
 
 /* Free the current process's resources. */
@@ -517,7 +523,7 @@ int count=0;
   memcpy(*esp,&argv[argc],sizeof(void*));
 //Put return address
 
-hex_dump(*esp,*esp,(int)((size_t)PHYS_BASE-(size_t)*esp),true);
+//hex_dump(*esp,*esp,(int)((size_t)PHYS_BASE-(size_t)*esp),true);
 
   return success;
 }

@@ -93,18 +93,15 @@ main (void)
   /* Greet user. */
   printf ("Pintos booting with %'"PRIu32" kB RAM...\n",
           init_ram_pages * PGSIZE / 1024);
-
   /* Initialize memory system. */
   palloc_init (user_page_limit);
   malloc_init ();
   paging_init ();
-
   /* Segmentation. */
 #ifdef USERPROG
   tss_init ();
   gdt_init ();
 #endif
-
   /* Initialize interrupt handlers. */
   intr_init ();
   timer_init ();
@@ -114,19 +111,20 @@ main (void)
   exception_init ();
   syscall_init ();
 #endif
-
+printf("Crash after here\n");
   /* Start thread scheduler and enable interrupts. */
   thread_start ();
+printf("a1\n");
   serial_init_queue ();
+printf("a2\n");
   timer_calibrate ();
-
+printf("Crash before here\n");
 #ifdef FILESYS
   /* Initialize file system. */
   ide_init ();
   locate_block_devices ();
   filesys_init (format_filesys);
 #endif
-
   printf ("Boot complete.\n");
   
   /* Run actions specified on kernel command line. */
