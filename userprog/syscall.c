@@ -142,7 +142,13 @@ void syscall_exit(int status)
 tid_t syscall_exec(const char *cmd_line)
 {
 //printf("exec");
-  return process_execute(cmd_line);
+  tid_t t=process_execute(cmd_line);
+  if(thread_current()->child->is_loaded==load_fail)
+  {
+//    thread_current()->child=NULL;
+//    return -1;
+  }
+  return t;
 }
 
 int syscall_wait(tid_t _pid)

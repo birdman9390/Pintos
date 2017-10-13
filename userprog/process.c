@@ -21,6 +21,9 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
+#define LOAD_SUCCESS 1
+#define LOAD_FAIL 0
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -68,6 +71,12 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
+
+  if(success)
+    thread_current()->child->is_loaded=load_success;
+  else
+    thread_current()->child->is_loaded=load_fail;
+
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
@@ -273,6 +282,7 @@ printf("\n");
 
   /* Open executable file. */
   file = filesys_open (file_name);
+//printf("if NULL(1),exist(0) :%d\n",file==NULL);
   if (file == NULL)
     {
       printf ("load: %s: open failed\n", file_name);
