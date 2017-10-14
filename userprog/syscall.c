@@ -151,7 +151,7 @@ tid_t syscall_exec(const char *cmd_line)
 {
 //printf("exec\n");
   tid_t t=process_execute(cmd_line);
-  if(thread_current()->child==NULL)
+  if(list_size(&thread_current()->child_list)==0)
   {
     return -1;
   }

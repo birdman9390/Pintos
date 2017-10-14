@@ -98,7 +98,10 @@ struct thread
     struct list_elem elem;              /* List element. */
 
     struct thread *parent;
-    struct thread *child;
+//    struct thread *child;
+    struct list child_list;
+    struct list_elem child_elem;
+
     bool is_waiting;
     int waiting_status;
     int is_loaded;

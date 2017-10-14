@@ -150,7 +150,7 @@ process_wait (tid_t child_tid UNUSED)
 {
 //printf("process_wait\n");
   struct thread* cur = thread_current();
-  if(!cur->child){
+  if(list_size(&cur->child_list)==0){
     return -1;
   }
   if(cur->is_waiting)
@@ -177,13 +177,24 @@ process_exit (void)
 //printf("process_exit\n");
   struct thread *cur = thread_current ();
   uint32_t *pd;
+  struct list_elem *e;
+
   if(thread_current()->parent != get_idle_thread()){
     if(thread_current()->parent->is_waiting == true )
     {
       thread_current()->parent->is_waiting=false;
       //thread_current()->parent->waiting_status=thread_current()->status;
     }
-    thread_current()->parent->child = NULL;
+    for(e=list_begin(&cur->parent->child_list);e!=list_end(&cur->parent->child_list);e=list_next(e))
+    {
+      struct thread* t=list_entry(e,struct thread,child_elem);
+      if(cur==t)
+      {
+        list_remove(e);
+        break;
+      }
+    }
+    //thread_current()->parent->child = NULL;
     thread_current()->parent = NULL;
   }
   /* Destroy the current process's page directory and switch back

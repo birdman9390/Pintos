@@ -205,7 +205,8 @@ thread_create (const char *name, int priority,
   sf->ebp = 0;
 
   intr_set_level (old_level);
-  thread_current()->child=t;
+  list_push_back(&thread_current()->child_list,&t->child_elem);
+//  thread_current()->child=t;
   t->parent=thread_current();
   /* Add to run queue. */
   thread_unblock (t);
@@ -488,7 +489,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   t->is_loaded=load_unloaded;
   list_push_back (&all_list, &t->allelem);
-
+  list_init(&t->child_list);
   list_init(&t->file_list);
   t->fd = 2;              // 우선 Standard Error로 초기화. 새로운 파일 오픈을 하거나 소켓 생성 시 + 1을 통해 일반적인 값으로 바꿈.
 }
