@@ -5,7 +5,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "threads/synch.h"
-
+#include "userprog/process.h"
 struct file_element {
   struct file *file;
   int fd;
@@ -150,12 +150,12 @@ void syscall_exit(int status)
 tid_t syscall_exec(const char *cmd_line)
 {
 //printf("exec\n");
+child_is_loaded=load_unloaded;
   tid_t t=process_execute(cmd_line);
-  if(list_size(&thread_current()->child_list)==0)
-  {
-    return -1;
-  }
-  else if(thread_current()->is_loaded==load_fail)
+while(child_is_loaded==load_unloaded)
+  barrier();
+//printf("child_is_loaded=%d\n",child_is_loaded);
+  if(child_is_loaded==load_fail)
   {
  //   thread_current()->child=NULL;
     return -1;

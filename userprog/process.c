@@ -24,7 +24,6 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 #define LOAD_SUCCESS 1
 #define LOAD_FAIL 0
 
-int is_loaded;
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -102,16 +101,16 @@ start_process (void *file_name_)
 
 //  thread_current()->is_loaded=load_unloaded;
   success = load (file_name, &if_.eip, &if_.esp);
-/*  if(success)
-  {
-    is_loaded=load_success;
-printf("load success!\n");
-  }
+  if(success)
+{
+    child_is_loaded=load_success;
+//printf("load success!\n");
+}
   else
 {
-    is_loaded=load_fail;
-printf("load fail!\n");
-}*/
+    child_is_loaded=load_fail;
+//printf("load fail!\n");
+}
 //  if(success==0&&thread_current()->child!=NULL)
 //    thread_current()->child->is_loaded=load_fail;
 //This is 원래꺼
@@ -339,6 +338,7 @@ printf("\n");
 
   /* Open executable file. */
   file = filesys_open (file_name);
+
 //printf("if NULL(1),exist(0) :%d\n",file==NULL);
   if (file == NULL)
     {
