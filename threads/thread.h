@@ -99,7 +99,6 @@ struct thread
 
     struct thread *parent;
     struct thread *child;
-
     bool is_waiting;
     int waiting_status;
     int is_loaded;

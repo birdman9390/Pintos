@@ -205,7 +205,8 @@ thread_create (const char *name, int priority,
   sf->ebp = 0;
 
   intr_set_level (old_level);
-
+  thread_current()->child=t;
+  t->parent=thread_current();
   /* Add to run queue. */
   thread_unblock (t);
 
@@ -485,6 +486,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  t->is_loaded=load_unloaded;
   list_push_back (&all_list, &t->allelem);
 
   list_init(&t->file_list);

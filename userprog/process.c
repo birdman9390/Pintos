@@ -24,6 +24,8 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 #define LOAD_SUCCESS 1
 #define LOAD_FAIL 0
 
+int is_loaded;
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -31,6 +33,7 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name)
 {
+//printf("process_execute\n");
   char *fn_copy;
   char *dummy;
   tid_t tid;
@@ -44,13 +47,36 @@ process_execute (const char *file_name)
 
   file_name = strtok_r(file_name," ",&dummy);   //file_name_only
   /* Create a new thread to execute FILE_NAME. */
+//  is_loaded=load_unloaded;
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+//printf("is_loaded :%d before while barrier\n",is_loaded);
+//  while(is_loaded==load_unloaded)
+//  {
+//    barrier();
+//printf("I'm now in the barrier!\n");
+//  }
 
+//printf("is_loaded:%d after while barrier\n",is_loaded);
+//  if(is_loaded==load_success)
+//  {
+//printf("load success, so I will make child and parent for each process\n");
+//    ASSERT(tid!=-1);
+//    thread_current()->child=get_thread(tid);
+//    get_thread(tid)->parent=thread_current();
+//    thread_current()->child->is_waiting==false;
+//  }
+//  else
+//    tid=-1;
+
+/*
   // add child pointer - JONGMIN
   thread_current()->child = get_thread(tid);
 //  thread_current()->child->parent=thread_current();
   get_thread(tid)->parent = thread_current();
   thread_current()->child->is_waiting==false;//modified
+*/
+//this is 원래꺼
+
 
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
@@ -62,6 +88,7 @@ process_execute (const char *file_name)
 static void
 start_process (void *file_name_)
 {
+//printf("start_process\n");
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
@@ -71,10 +98,24 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
 
-  if(success==0&&thread_current()->child!=NULL)
-    thread_current()->child->is_loaded=load_fail;
+
+//  thread_current()->is_loaded=load_unloaded;
+  success = load (file_name, &if_.eip, &if_.esp);
+/*  if(success)
+  {
+    is_loaded=load_success;
+printf("load success!\n");
+  }
+  else
+{
+    is_loaded=load_fail;
+printf("load fail!\n");
+}*/
+//  if(success==0&&thread_current()->child!=NULL)
+//    thread_current()->child->is_loaded=load_fail;
+//This is 원래꺼
+
 //    thread_current()->child->is_loaded=load_success;
 //  else
 //    thread_current()->child->is_loaded=load_fail;
@@ -107,6 +148,7 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED)
 {
+//printf("process_wait\n");
   struct thread* cur = thread_current();
   if(!cur->child){
     return -1;
@@ -132,6 +174,7 @@ process_wait (tid_t child_tid UNUSED)
 void
 process_exit (void)
 {
+//printf("process_exit\n");
   struct thread *cur = thread_current ();
   uint32_t *pd;
   if(thread_current()->parent != get_idle_thread()){
@@ -167,6 +210,7 @@ process_exit (void)
 void
 process_activate (void)
 {
+//printf("process_activate\n");
   struct thread *t = thread_current ();
 
   /* Activate thread's page tables. */
@@ -253,6 +297,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 bool
 load (const char *file_name, void (**eip) (void), void **esp)
 {
+//printf("load\n");
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
   struct file *file = NULL;
@@ -289,7 +334,6 @@ printf("\n");
       printf ("load: %s: open failed\n", file_name);
       goto done;
     }
-
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)
@@ -373,7 +417,7 @@ printf("\n");
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
+  file_close(file);
   return success;
 }
 
@@ -490,6 +534,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp,char* filename,char** rest_of_filename)
 {
+//printf("setupstack\n");
   uint8_t *kpage;
   bool success = false;
   char* argument;

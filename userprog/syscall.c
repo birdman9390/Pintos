@@ -126,29 +126,36 @@ syscall_handler (struct intr_frame *f UNUSED)
 
 void syscall_halt()
 {
+//printf("halt\n");
   shutdown_power_off();
 }
 
 void syscall_exit(int status)
 {
-//printf("exit");
+//printf("exit\n");
   if(status == -1){
     //error 처리
   }
+//printf("exit1\n");
+//printf("is the thread_current() : idle? : %d\n",thread_current()==get_idle_thread()->child);
+//printf("is there thread_current()->parent? : %d\n",thread_current()->parent!=NULL);
   thread_current()->parent->waiting_status=status;
+//printf("exit2\n");
   printf ("%s: exit(%d)\n", thread_current()->name, status);
+//printf("exit3\n");
   thread_exit();
+//printf("endofexit\n");
 }
 
 tid_t syscall_exec(const char *cmd_line)
 {
-//printf("exec");
+//printf("exec\n");
   tid_t t=process_execute(cmd_line);
   if(thread_current()->child==NULL)
   {
     return -1;
   }
-  else if(thread_current()->child->is_loaded==load_fail)
+  else if(thread_current()->is_loaded==load_fail)
   {
  //   thread_current()->child=NULL;
     return -1;
@@ -158,22 +165,22 @@ tid_t syscall_exec(const char *cmd_line)
 
 int syscall_wait(tid_t _pid)
 {
-//printf("wait");
+//printf("wait\n");
   return process_wait(_pid);      // pid of child process. will start
 }
 bool syscall_create (const char *file, unsigned initial_size)
 {
-//printf("create");
+//printf("create\n");
   return filesys_create(file, initial_size);
 }
 bool syscall_remove (const char *file)
 {
-//printf("remove");
+//printf("remove\n");
   return filesys_remove(file);
 }
 int syscall_open (const char *file)
 {
-//printf("open");
+//printf("open\n");
   int returnVal;
   lock_acquire(&file_lock);
   struct file *f = filesys_open(file);  // file open
@@ -197,7 +204,7 @@ int syscall_open (const char *file)
 }
 int syscall_filesize (int fd)
 {
-//printf("filesize");
+//printf("filesize\n");
   int returnVal;
   lock_acquire(&file_lock);
   struct file *f = get_file_fd(fd);
@@ -211,7 +218,7 @@ int syscall_filesize (int fd)
 }
 int syscall_read (int fd, void *buffer, unsigned size)
 {
-//printf("read");
+//printf("read\n");
   // size 만큼을 읽어서 buffer에 쓴다.
   int returnVal;
   lock_acquire(&file_lock);
@@ -238,6 +245,7 @@ int syscall_read (int fd, void *buffer, unsigned size)
 
 int syscall_write (int fd, const void *buffer, unsigned size)
 {
+//printf("write\n");
   int returnVal;
   lock_acquire(&file_lock);
   if (fd == STDOUT_FILENO){
@@ -259,7 +267,7 @@ int syscall_write (int fd, const void *buffer, unsigned size)
 
 void syscall_seek(int fd, unsigned position)
 {
-//printf("seek");
+//printf("seek\n");
   lock_acquire(&file_lock);
   struct file *f = get_file_fd(fd);
   if(f == NULL){}
@@ -271,7 +279,7 @@ void syscall_seek(int fd, unsigned position)
 
 unsigned syscall_tell(int fd)
 {
-//printf("tell");
+//printf("tell\n");
   unsigned returnVal;
   lock_acquire(&file_lock);
   struct file *f = get_file_fd(fd);
