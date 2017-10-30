@@ -139,6 +139,7 @@ void syscall_exit(int status)
   if(status == -1){
     //error 처리
   }
+  printf ("%s: exit(%d)\n", thread_current()->name, thread_current()->status);
   thread_exit();
 }
 
@@ -176,11 +177,7 @@ int syscall_write (int fd, const void *buffer, unsigned size)
     putbuf((char *)buffer, (size_t)size);
     return (int)size;
   }
-  // else if (get_fd_entry(fd) != NULL){
-  //   // off_t_value is bytes
-  //   int off_t_value = file_write(,buffer, size);
-  //   return off_t_value;
-  // }
+  // Need to implement other fd case
   return -1;
 }
 void syscall_seek()

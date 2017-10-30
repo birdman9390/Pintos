@@ -29,6 +29,7 @@ tid_t
 process_execute (const char *file_name)
 {
   char *fn_copy;
+  char *dummy;
   tid_t tid;
 
   /* Make a copy of FILE_NAME.
@@ -38,6 +39,7 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  file_name = strtok_r(file_name," ",&dummy);   //file_name_only
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
 
@@ -131,7 +133,6 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-//    printf ("%s: exit(%d)\n", );
 }
 
 /* Sets up the CPU for running user code in the current
