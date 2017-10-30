@@ -131,7 +131,7 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-    //printf("process terminated message 여기서 출력 \n\n");
+//    printf ("%s: exit(%d)\n", );
 }
 
 /* Sets up the CPU for running user code in the current
@@ -530,7 +530,7 @@ int count=0;
   memcpy(*esp,&argv[argc],sizeof(void*));
 //Put return address
 
-//hex_dump(*esp,*esp,(int)((size_t)PHYS_BASE-(size_t)*esp),true);
+// hex_dump(*esp,*esp,(int)((size_t)PHYS_BASE-(size_t)*esp),true);
 
   return success;
 }
