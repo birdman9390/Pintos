@@ -10,8 +10,8 @@ void syscall_halt();
 void syscall_exit(int status);
 tid_t syscall_exec(const char *cmd_line);
 int syscall_wait(tid_t _pid);
-void syscall_create();
-void syscall_remove();
+bool syscall_create (const char *file, unsigned initial_size);
+bool syscall_remove (const char *file);
 int syscall_open (const char *file);
 void syscall_filesize();
 int syscall_read (int fd, void *buffer, unsigned size);
@@ -91,10 +91,15 @@ syscall_handler (struct intr_frame *f UNUSED)
     f->eax = syscall_wait(arg[0]);
     break;
   case SYS_CREATE:
-    syscall_create();
+    get_argument(f,arg,2);
+    arg[0] = get_kernel_pointer_addr((const void*)arg[0]);  // new file name
+    arg[1] = (unsigned) arg[1];     // initial_size
+    syscall_create(arg[0], arg[1]);
     break;
   case SYS_REMOVE:
-    syscall_remove();
+    get_argument(f,arg,1);
+    arg[0] = get_kernel_pointer_addr((const void*)arg[0]); // removing file name
+    syscall_remove(arg[0]);
     break;
   case SYS_OPEN:
     get_argument(f,arg,1);
@@ -139,7 +144,7 @@ void syscall_exit(int status)
   if(status == -1){
     //error 처리
   }
-  printf ("%s: exit(%d)\n", thread_current()->name, thread_current()->status);
+  printf ("%s: exit(%d)\n", thread_current()->name, status);
   thread_exit();
 }
 
@@ -152,13 +157,13 @@ int syscall_wait(tid_t _pid)
 {
   return process_wait(_pid);      // pid of child process. will start
 }
-void syscall_create()
+bool syscall_create (const char *file, unsigned initial_size)
 {
-printf("create\n");
+  return filesys_create(file, initial_size);
 }
-void syscall_remove()
+bool syscall_remove (const char *file)
 {
-printf("remove\n");
+  return filesys_remove(file);
 }
 int syscall_open (const char *file)
 {
