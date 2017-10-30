@@ -95,12 +95,15 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED)
 {
+  struct thread* cur = thread_current();
+  if(!cur->child){
+    return -1;
+  }
 
-    //printf("process wait and block.\n");;
     enum intr_level old_level = intr_disable ();
     thread_block();
     intr_set_level (old_level);
-    //printf("process wait finish\n");
+
   return child_tid;
 
 }
