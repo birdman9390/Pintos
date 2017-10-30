@@ -29,6 +29,7 @@ tid_t
 process_execute (const char *file_name)
 {
   char *fn_copy;
+  char *dummy;
   tid_t tid;
 
   /* Make a copy of FILE_NAME.
@@ -38,6 +39,7 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  file_name = strtok_r(file_name," ",&dummy);   //file_name_only
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
 
@@ -93,12 +95,15 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED)
 {
+  struct thread* cur = thread_current();
+  if(!cur->child){
+    return -1;
+  }
 
-    //printf("process wait and block.\n");;
     enum intr_level old_level = intr_disable ();
     thread_block();
     intr_set_level (old_level);
-    //printf("process wait finish\n");
+
   return child_tid;
 
 }
@@ -131,7 +136,6 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-    //printf("process terminated message 여기서 출력 \n\n");
 }
 
 /* Sets up the CPU for running user code in the current
@@ -530,7 +534,7 @@ int count=0;
   memcpy(*esp,&argv[argc],sizeof(void*));
 //Put return address
 
-//hex_dump(*esp,*esp,(int)((size_t)PHYS_BASE-(size_t)*esp),true);
+// hex_dump(*esp,*esp,(int)((size_t)PHYS_BASE-(size_t)*esp),true);
 
   return success;
 }
