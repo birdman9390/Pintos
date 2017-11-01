@@ -4,12 +4,15 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
 
 struct file_element {
   struct file *file;
   int fd;
   struct list_elem elem;
 };
+
+struct lock file_lock;
 
 static void syscall_handler (struct intr_frame *);
 void syscall_halt();
@@ -34,15 +37,17 @@ struct file* get_file_fd(int fd);
 void
 syscall_init (void)
 {
+  lock_init(&file_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
 static void
 syscall_handler (struct intr_frame *f UNUSED)
 {
-  int arg[5];   // it takes argv[1], [2] ...
-  // valid pointer check!!!!!!!!!!!!!!!! f->esp
+  int arg[3];   // it takes argv[1], [2], [3] - maximum number of argu 3
+
   int * p = f->esp;
+  check_valid_ptr((const void*)p);     // valid pointer check! - for sc-bad-sp.ck case
   int system_call = *p;
 
   // printf("%d\n\n",system_call);
@@ -58,12 +63,8 @@ syscall_handler (struct intr_frame *f UNUSED)
     break;
   case SYS_EXEC:
     get_argument(f, arg, 1);
-    // printf("%d\n\n",arg[0]);
-    arg[0] = get_kernel_pointer_addr((const void*)arg[0]);
-    // printf("%d\n\n",arg[0]);
-    // printf("%s\n\n",(const char*)arg[0]);
-
-    f->eax = syscall_exec((const char*)arg[0]);
+    arg[0] = (const char*) get_kernel_pointer_addr((const void*)arg[0]);
+    f->eax = syscall_exec(arg[0]);
     break;
   case SYS_WAIT:
     get_argument(f, arg, 1);
@@ -71,27 +72,27 @@ syscall_handler (struct intr_frame *f UNUSED)
     break;
   case SYS_CREATE:
     get_argument(f,arg,2);
-    arg[0] = get_kernel_pointer_addr((const void*)arg[0]);  // new file name
+    arg[0] = get_kernel_pointer_addr((const void*)arg[0]);  // new file
     arg[1] = (unsigned) arg[1];     // initial_size
-    syscall_create(arg[0], arg[1]);
+    f->eax = syscall_create(arg[0], arg[1]);
     break;
   case SYS_REMOVE:
     get_argument(f,arg,1);
-    arg[0] = get_kernel_pointer_addr((const void*)arg[0]); // removing file name
-    syscall_remove(arg[0]);
+    arg[0] = get_kernel_pointer_addr((const void*)arg[0]); // get the file
+    f->eax = syscall_remove(arg[0]);
     break;
   case SYS_OPEN:
     get_argument(f,arg,1);
     arg[0] = get_kernel_pointer_addr((const void*)arg[0]);  // file
-    syscall_open(arg[0]);
+    f->eax = syscall_open(arg[0]);
     break;
   case SYS_FILESIZE:
     get_argument(f,arg,1);
-    syscall_filesize(arg[0]);     // file descriptor
+    f->eax = syscall_filesize(arg[0]);     // file descriptor
     break;
   case SYS_READ:
     get_argument(f,arg,3);
-    // should check valid buffer // for bad-read case
+    check_valid_buffer((void*)arg[1],(unsigned)arg[2]); // for bad-read case
     arg[0] = (int) arg[0];      // file descriptor
     arg[1] = get_kernel_pointer_addr((const void*)arg[1]);  // file buffer
     arg[2] = (unsigned) arg[2];
@@ -99,7 +100,7 @@ syscall_handler (struct intr_frame *f UNUSED)
     break;
   case SYS_WRITE:
     get_argument(f,arg,3);
-    // should check valid buffer // for bad-write case
+    check_valid_buffer((void*)arg[1],(unsigned)arg[2]);// for bad-write case
     arg[0] = (int)arg[0];   // file descriptor
     arg[1] = get_kernel_pointer_addr((const void*) arg[1]); // file buffer (contents)
     arg[2] = (unsigned)arg[2]; // file size
@@ -156,10 +157,11 @@ bool syscall_remove (const char *file)
 }
 int syscall_open (const char *file)
 {
+  int returnVal;
+  lock_acquire(&file_lock);
   struct file *f = filesys_open(file);  // file open
-  int fd;
   if(!f){
-    return -1;
+    returnVal = -1;
   }  // file is not open
   else {
     struct file_element *file_pointer = malloc(sizeof(struct file_element));
@@ -169,75 +171,94 @@ int syscall_open (const char *file)
     // single file이 두번 이상 불리는 경우도 처리. // close도 독립적
     list_push_back(&thread_current()->file_list, &file_pointer->elem);
     // add file to the file_list of thread
-    return file_pointer->fd;
+    returnVal = file_pointer->fd;
   }
-  return fd;
+  lock_release(&file_lock);
+  return returnVal;
 }
 int syscall_filesize (int fd)
 {
+  int returnVal;
+  lock_acquire(&file_lock);
   struct file *f = get_file_fd(fd);
   if(f == NULL){
-    return -1;      // file cannot open
+    returnVal = -1;      // file cannot open
   } else {
-    return file_length(f);
+    returnVal = file_length(f);
   }
+  lock_release(&file_lock);
+  return returnVal;
 }
 int syscall_read (int fd, void *buffer, unsigned size){
   // size 만큼을 읽어서 buffer에 쓴다.
+  int returnVal;
+  lock_acquire(&file_lock);
   if(fd == STDIN_FILENO){   // fd ==0 , keyboard case
       int i = 0;
       char* buf = (char*) buffer;  //buffer pointer
       for(;i<size;i++){
         buf[i] = input_getc();
       }
-      return size;
+      returnVal = size;
   }
   else {
       struct file *f = get_file_fd(fd);
       if(f == NULL){
-        return -1;
+        returnVal = -1;
       }
       else {
-        return file_read(f, buffer, size);  // file.h
+        returnVal = file_read(f, buffer, size);  // file.h
       }
   }
+  lock_release(&file_lock);
+  return returnVal;
 }
 
 int syscall_write (int fd, const void *buffer, unsigned size)
 {
+  int returnVal;
+  lock_acquire(&file_lock);
   if (fd == STDOUT_FILENO){
     putbuf((char *)buffer, (size_t)size);     // console writing case
-    return (int)size;
+    returnVal = (int)size;
   }
   else {
     struct file *f = get_file_fd(fd);
     if(f == NULL){
-      return -1;
+      returnVal = -1;
     }
     else {
-      return file_write(f,buffer,size);
+      returnVal = file_write(f,buffer,size);
     }
   }
+  lock_release(&file_lock);
+  return returnVal;
 }
 
 void syscall_seek(int fd, unsigned position){
+  lock_acquire(&file_lock);
   struct file *f = get_file_fd(fd);
-  if(f == NULL){
-    return;
-  } else {
-    return file_seek(f, position);      // file 이 끝부분 뒤를 읽는 예외는 없다.
+  if(f == NULL){}
+  else {
+    file_seek(f, position);      // file 이 끝부분 뒤를 읽는 예외는 없다.
   }
+  lock_release(&file_lock);
 }
 
 unsigned syscall_tell(int fd){
+  unsigned returnVal;
+  lock_acquire(&file_lock);
   struct file *f = get_file_fd(fd);
   if(f == NULL){
-    return;
+    returnVal = -1;
   } else {
-    return file_tell(f);      // off_t -> 시작부터 센 bytes 위치.
+    returnVal = file_tell(f);      // off_t -> 시작부터 센 bytes 위치.
   }
+  lock_release(&file_lock);
+  return returnVal;
 }
 void syscall_close(int fd){
+  lock_acquire(&file_lock);
   struct thread *t = thread_current();
   struct list_elem *e;
 
@@ -251,6 +272,7 @@ void syscall_close(int fd){
     // process exit 의 경우에는 모든 fd를 지워준다.
     //(all closing case) should be added
   }
+  lock_release(&file_lock);
 }
 
 struct file* get_file_fd(int fd){
@@ -285,6 +307,16 @@ void check_valid_ptr (const void *vaddr)
   if (is_kernel_vaddr(vaddr) || vaddr < (void*)0x08048000)
       syscall_exit(-1);
 }
+
+void check_valid_buffer (void* buffer, int size){
+  char *buf = (char *)buffer;
+  int i=0;
+  for(;i<size;i++){
+    check_valid_ptr((const void*)buf);
+    buf += 1;   //next buffer
+  }
+}
+
 int get_kernel_pointer_addr(const void *vaddr)
 {
   check_valid_ptr(vaddr);

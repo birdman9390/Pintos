@@ -17,7 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
-
+#include "threads/synch.h"
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -46,6 +46,7 @@ process_execute (const char *file_name)
   // add child pointer - JONGMIN
   thread_current()->child = get_thread(tid);
   get_thread(tid)->parent = thread_current();
+  thread_current()->child->is_waiting==false;//modified
 
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
@@ -99,13 +100,21 @@ process_wait (tid_t child_tid UNUSED)
   if(!cur->child){
     return -1;
   }
+  if(cur->is_waiting)
+    return -1;
+  cur->is_waiting=true;
+  while(cur->is_waiting==true)
+  {
+    barrier();
+  }
 
+/*
     enum intr_level old_level = intr_disable ();
     thread_block();
     intr_set_level (old_level);
-
-  return child_tid;
-
+*/
+// return child_tid;
+  return cur->waiting_status;
 }
 
 /* Free the current process's resources. */
@@ -115,8 +124,11 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
   if(thread_current()->parent != get_idle_thread()){
-    if(thread_current()->parent->status == THREAD_BLOCKED )
-      thread_unblock(thread_current()->parent);
+    if(thread_current()->parent->is_waiting == true )
+    {
+      thread_current()->parent->is_waiting=false;
+      thread_current()->parent->waiting_status=thread_current()->status;
+    }
     thread_current()->parent->child = NULL;
     thread_current()->parent = NULL;
   }

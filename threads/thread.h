@@ -24,6 +24,10 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+#define load_success 1
+#define load_fail 0
+#define load_unloaded -1
+
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -95,6 +99,10 @@ struct thread
 
     struct thread *parent;
     struct thread *child;
+
+    bool is_waiting;
+    int waiting_status;
+    int is_loaded;
 
     // for file system_call implement - jm
     struct list file_list;
