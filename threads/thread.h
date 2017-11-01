@@ -96,6 +96,10 @@ struct thread
     struct thread *parent;
     struct thread *child;
 
+    // for file system_call implement - jm
+    struct list file_list;
+    int fd;
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */

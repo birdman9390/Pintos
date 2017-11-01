@@ -5,6 +5,12 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
+struct file_element {
+  struct file *file;
+  int fd;
+  struct list_elem elem;
+};
+
 static void syscall_handler (struct intr_frame *);
 void syscall_halt();
 void syscall_exit(int status);
@@ -13,7 +19,7 @@ int syscall_wait(tid_t _pid);
 bool syscall_create (const char *file, unsigned initial_size);
 bool syscall_remove (const char *file);
 int syscall_open (const char *file);
-void syscall_filesize();
+int syscall_filesize (int fd);
 int syscall_read (int fd, void *buffer, unsigned size);
 int syscall_write (int fd, const void *buffer, unsigned size);
 void syscall_seek();
@@ -23,34 +29,6 @@ void syscall_close();
 void get_argument (struct intr_frame *f, int *arg, int n);
 void check_valid_ptr (const void *vaddr);
 int get_kernel_pointer_addr(const void *vaddr);
-
-
-void get_argument (struct intr_frame *f, int *arg, int n)
-{
-  int i;
-  int *ptr;
-  for (i = 0; i < n; i++)
-    {
-      ptr = (int *) f->esp + i + 1;
-      check_valid_ptr((const void *) ptr);
-      arg[i] = *ptr;
-    }
-}
-void check_valid_ptr (const void *vaddr)
-{
-  // this function is in the thread/vaddr.h
-  if (is_kernel_vaddr(vaddr) || vaddr < (void*)0x08048000)
-      syscall_exit(-1);
-}
-int get_kernel_pointer_addr(const void *vaddr)
-{
-  check_valid_ptr(vaddr);
-  void *ptr = pagedir_get_page(thread_current()->pagedir, vaddr);
-  if (!ptr){
-      syscall_exit(-1); // error case
-    }
-  return (int) ptr;
-}
 
 void
 syscall_init (void)
@@ -103,14 +81,20 @@ syscall_handler (struct intr_frame *f UNUSED)
     break;
   case SYS_OPEN:
     get_argument(f,arg,1);
-    arg[0] = get_kernel_pointer_addr((const void*)arg[0]);
+    arg[0] = get_kernel_pointer_addr((const void*)arg[0]);  // file
     syscall_open(arg[0]);
     break;
   case SYS_FILESIZE:
-    syscall_filesize();
+    get_argument(f,arg,1);
+    syscall_filesize(arg[0]);     // file descriptor
     break;
   case SYS_READ:
-//    syscall_read(f);
+    get_argument(f,arg,3);
+    //valid pointer check? buffer is in user?
+    arg[0] = (int) arg[0];      // file descriptor
+    arg[1] = get_kernel_pointer_addr((const void*)arg[0]);  // file buffer
+    arg[2] = (unsigned) arg[2];
+    f->eax = syscall_read(arg[0],arg[1],arg[2]);
     break;
   case SYS_WRITE:
     get_argument(f,arg,3);
@@ -167,15 +151,37 @@ bool syscall_remove (const char *file)
 }
 int syscall_open (const char *file)
 {
-printf("open\n");
+  struct file *f = filesys_open(file);  // file open
+  int fd;
+  if(!f){
+    return -1;
+  }  // file is not open
+  else {
+    struct file_element *file_pointer = malloc(sizeof(struct file_element));
+    file_pointer->file = f;
+    file_pointer->fd = thread_current()->fd;
+    thread_current()->fd += 1;    // make fd not error
+    list_push_back(&thread_current()->file_list, &file_pointer->elem);
+    return file_pointer->fd;
+  }
+  return fd;
 }
-void syscall_filesize()
+int syscall_filesize (int fd)
 {
 printf("filesize\n");
 }
-int read (int fd, void *buffer, unsigned size){
+int syscall_read (int fd, void *buffer, unsigned size){ // size 만큼을 읽어서 buffer에 쓴다.
+  int i = 0;
+  // if(fd == STDIN_FILENO){   // fd ==0 , keyboard case
+  //     for(;i<size;i++){
+  //       *buffer+i = input_getc();
+  //     }
+  //     return size;
+  // }
+
 
 }
+
 int syscall_write (int fd, const void *buffer, unsigned size)
 {
   if (fd == STDOUT_FILENO){
@@ -196,4 +202,31 @@ printf("tell\n");
 void syscall_close()
 {
 printf("close\n");
+}
+
+void get_argument (struct intr_frame *f, int *arg, int n)
+{
+  int i;
+  int *ptr;
+  for (i = 0; i < n; i++)
+    {
+      ptr = (int *) f->esp + i + 1;
+      check_valid_ptr((const void *) ptr);
+      arg[i] = *ptr;
+    }
+}
+void check_valid_ptr (const void *vaddr)
+{
+  // this function is in the thread/vaddr.h
+  if (is_kernel_vaddr(vaddr) || vaddr < (void*)0x08048000)
+      syscall_exit(-1);
+}
+int get_kernel_pointer_addr(const void *vaddr)
+{
+  check_valid_ptr(vaddr);
+  void *ptr = pagedir_get_page(thread_current()->pagedir, vaddr);
+  if (!ptr){
+      syscall_exit(-1); // error case
+    }
+  return (int) ptr;
 }
