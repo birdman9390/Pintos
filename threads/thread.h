@@ -24,6 +24,10 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+#define load_success 1
+#define load_fail 0
+#define load_unloaded -1
+
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -93,6 +97,17 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+    struct thread *parent;
+    struct thread *child;
+
+    bool is_waiting;
+    int waiting_status;
+    int is_loaded;
+
+    // for file system_call implement - jm
+    struct list file_list;
+    int fd;
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -109,6 +124,9 @@ extern bool thread_mlfqs;
 
 void thread_init (void);
 void thread_start (void);
+
+struct thread* get_thread(tid_t tid);
+struct thread* get_idle_thread();
 
 void thread_tick (void);
 void thread_print_stats (void);
