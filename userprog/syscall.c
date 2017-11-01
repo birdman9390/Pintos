@@ -22,13 +22,14 @@ int syscall_open (const char *file);
 int syscall_filesize (int fd);
 int syscall_read (int fd, void *buffer, unsigned size);
 int syscall_write (int fd, const void *buffer, unsigned size);
-void syscall_seek();
-void syscall_tell();
-void syscall_close();
+void syscall_seek(int fd, unsigned position);
+unsigned syscall_tell(int fd);
+void syscall_close(int fd);
 
 void get_argument (struct intr_frame *f, int *arg, int n);
 void check_valid_ptr (const void *vaddr);
 int get_kernel_pointer_addr(const void *vaddr);
+struct file* get_file_fd(int fd);
 
 void
 syscall_init (void)
@@ -90,27 +91,31 @@ syscall_handler (struct intr_frame *f UNUSED)
     break;
   case SYS_READ:
     get_argument(f,arg,3);
-    //valid pointer check? buffer is in user?
+    // should check valid buffer // for bad-read case
     arg[0] = (int) arg[0];      // file descriptor
-    arg[1] = get_kernel_pointer_addr((const void*)arg[0]);  // file buffer
+    arg[1] = get_kernel_pointer_addr((const void*)arg[1]);  // file buffer
     arg[2] = (unsigned) arg[2];
     f->eax = syscall_read(arg[0],arg[1],arg[2]);
     break;
   case SYS_WRITE:
     get_argument(f,arg,3);
+    // should check valid buffer // for bad-write case
     arg[0] = (int)arg[0];   // file descriptor
     arg[1] = get_kernel_pointer_addr((const void*) arg[1]); // file buffer (contents)
     arg[2] = (unsigned)arg[2]; // file size
     f->eax = syscall_write(arg[0], arg[1], arg[2]);
     break;
   case SYS_SEEK:
-    syscall_seek();
+    get_argument(f,arg,2);
+    syscall_seek(arg[0],arg[1]);
     break;
   case SYS_TELL:
-    syscall_tell();
+    get_argument(f,arg,1);
+    syscall_tell(arg[0]);
     break;
   case SYS_CLOSE:
-    syscall_close();
+    get_argument(f,arg,1);
+    syscall_close(arg[0]);
     break;
   dafault:
     printf("Error loading syscall, syscall num : %d\n",*((int*)f->esp));
@@ -160,49 +165,108 @@ int syscall_open (const char *file)
     struct file_element *file_pointer = malloc(sizeof(struct file_element));
     file_pointer->file = f;
     file_pointer->fd = thread_current()->fd;
-    thread_current()->fd += 1;    // make fd not error
+    thread_current()->fd += 1;
+    // single file이 두번 이상 불리는 경우도 처리. // close도 독립적
     list_push_back(&thread_current()->file_list, &file_pointer->elem);
+    // add file to the file_list of thread
     return file_pointer->fd;
   }
   return fd;
 }
 int syscall_filesize (int fd)
 {
-printf("filesize\n");
+  struct file *f = get_file_fd(fd);
+  if(f == NULL){
+    return -1;      // file cannot open
+  } else {
+    return file_length(f);
+  }
 }
-int syscall_read (int fd, void *buffer, unsigned size){ // size 만큼을 읽어서 buffer에 쓴다.
-  int i = 0;
-  // if(fd == STDIN_FILENO){   // fd ==0 , keyboard case
-  //     for(;i<size;i++){
-  //       *buffer+i = input_getc();
-  //     }
-  //     return size;
-  // }
-
-
+int syscall_read (int fd, void *buffer, unsigned size){
+  // size 만큼을 읽어서 buffer에 쓴다.
+  if(fd == STDIN_FILENO){   // fd ==0 , keyboard case
+      int i = 0;
+      char* buf = (char*) buffer;  //buffer pointer
+      for(;i<size;i++){
+        buf[i] = input_getc();
+      }
+      return size;
+  }
+  else {
+      struct file *f = get_file_fd(fd);
+      if(f == NULL){
+        return -1;
+      }
+      else {
+        return file_read(f, buffer, size);  // file.h
+      }
+  }
 }
 
 int syscall_write (int fd, const void *buffer, unsigned size)
 {
   if (fd == STDOUT_FILENO){
-    putbuf((char *)buffer, (size_t)size);
+    putbuf((char *)buffer, (size_t)size);     // console writing case
     return (int)size;
   }
-  // Need to implement other fd case
-  return -1;
+  else {
+    struct file *f = get_file_fd(fd);
+    if(f == NULL){
+      return -1;
+    }
+    else {
+      return file_write(f,buffer,size);
+    }
+  }
 }
-void syscall_seek()
-{
-printf("seek\n");
+
+void syscall_seek(int fd, unsigned position){
+  struct file *f = get_file_fd(fd);
+  if(f == NULL){
+    return;
+  } else {
+    return file_seek(f, position);      // file 이 끝부분 뒤를 읽는 예외는 없다.
+  }
 }
-void syscall_tell()
-{
-printf("tell\n");
+
+unsigned syscall_tell(int fd){
+  struct file *f = get_file_fd(fd);
+  if(f == NULL){
+    return;
+  } else {
+    return file_tell(f);      // off_t -> 시작부터 센 bytes 위치.
+  }
 }
-void syscall_close()
-{
-printf("close\n");
+void syscall_close(int fd){
+  struct thread *t = thread_current();
+  struct list_elem *e;
+
+  for(e = list_begin(&t->file_list); e != list_end(&t->file_list);e = list_next(e)){
+    struct file_element *file_pointer = list_entry(e, struct file_element,elem);
+    if(fd == file_pointer->fd){
+      file_close(file_pointer->file);
+      list_remove(&file_pointer->elem);
+      free(file_pointer);
+    }
+    // process exit 의 경우에는 모든 fd를 지워준다.
+    //(all closing case) should be added
+  }
 }
+
+struct file* get_file_fd(int fd){
+  struct thread *t = thread_current();
+  struct list_elem *e;
+
+  for(e = list_begin(&t->file_list); e != list_end(&t->file_list);e = list_next(e)){
+    struct file_element *file_pointer = list_entry(e, struct file_element,elem);
+    // file_list 중 fd가 parameter로 들어온 fd와 같으면 해당 파일 return
+    if(fd = file_pointer->fd){
+      return file_pointer->file;
+    }
+  }
+  return NULL;
+}
+
 
 void get_argument (struct intr_frame *f, int *arg, int n)
 {
