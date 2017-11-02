@@ -6,6 +6,8 @@
 #include "threads/vaddr.h"
 #include "threads/synch.h"
 
+#include "userprog/process.h"
+
 struct file_element {
   struct file *file;
   int fd;
@@ -134,13 +136,21 @@ void syscall_exit(int status)
   if(status == -1){
     //error 처리
   }
+  thread_current()->parent->waiting_status=status;
   printf ("%s: exit(%d)\n", thread_current()->name, status);
   thread_exit();
 }
 
 tid_t syscall_exec(const char *cmd_line)
 {
-  return process_execute(cmd_line);
+  tid_t t=process_execute(cmd_line);
+  if(thread_current()->child==NULL)
+     return -1;
+  else if(thread_current()->child->is_loaded==load_fail)
+     return -1;
+  else
+     return t;
+  //return process_execute(cmd_line);
 }
 
 int syscall_wait(tid_t _pid)
@@ -264,10 +274,14 @@ void syscall_close(int fd){
 
   for(e = list_begin(&t->file_list); e != list_end(&t->file_list);e = list_next(e)){
     struct file_element *file_pointer = list_entry(e, struct file_element,elem);
-    if(fd == file_pointer->fd){
+    if(file_pointer==NULL){
+      break;
+    }
+    else if(fd == file_pointer->fd){
       file_close(file_pointer->file);
       list_remove(&file_pointer->elem);
       free(file_pointer);
+      break;
     }
     // process exit 의 경우에는 모든 fd를 지워준다.
     //(all closing case) should be added
