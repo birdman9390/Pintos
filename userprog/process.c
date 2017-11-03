@@ -149,7 +149,7 @@ process_exit (void)
   syscall_close(-1);      // exit every process
   if (cur->is_executing){
       file_close(cur->is_executing);
-    }
+  }
 
     // remove all of the child -> No 고아 프로세스 (orphan)
   struct list_elem *next;
@@ -322,7 +322,7 @@ printf("\n");
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)
-      || ehdr.e_type != 2
+      || ehdr.e_type != 2 
       || ehdr.e_machine != 3
       || ehdr.e_version != 1
       || ehdr.e_phentsize != sizeof (struct Elf32_Phdr)

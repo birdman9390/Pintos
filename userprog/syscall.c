@@ -50,10 +50,10 @@ syscall_handler (struct intr_frame *f UNUSED)
 {
   int arg[3];   // it takes argv[1], [2], [3] - maximum number of argu 3
 
-  int * p = f->esp;
-  check_valid_ptr((const void*)p);     // valid pointer check! - for sc-bad-sp.ck case
-  int system_call = *p;
-
+  // int * p = f->esp;
+  //check_valid_ptr((const void*)p);     // valid pointer check! - for sc-bad-sp.ck case
+  int p = get_kernel_pointer_addr((const void*)f->esp);
+  int system_call = *(int*)p;
   // printf("%d\n\n",system_call);
 
   switch(system_call)
