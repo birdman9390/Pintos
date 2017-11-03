@@ -18,6 +18,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "threads/synch.h"
+#include "userprog/syscall.h"
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -49,7 +50,7 @@ process_execute (const char *file_name)
   // add child pointer - JONGMIN
   thread_current()->child = get_thread(tid);
 //  thread_current()->child->parent=thread_current();
-  get_thread(tid)->parent = thread_current();
+  // get_thread(tid)->parent = thread_current();
   thread_current()->child->is_waiting==false;//modified
 
   if (tid == TID_ERROR)
@@ -74,10 +75,16 @@ start_process (void *file_name_)
   success = load (file_name, &if_.eip, &if_.esp);
 
   if(success==0&&thread_current()->child!=NULL)
-    thread_current()->child->is_loaded=load_fail;
-//    thread_current()->child->is_loaded=load_success;
-//  else
-//    thread_current()->child->is_loaded=load_fail;
+    thread_current()->cp->is_loaded=load_fail;
+  else{
+    thread_current()->cp->is_loaded=load_success;
+  }
+
+  if(success)
+    child_is_loaded=load_success;
+  else
+    child_is_loaded=load_fail;
+  sema_up(&thread_current()->cp->load_sema);
 
 
   /* If load failed, quit. */
@@ -107,17 +114,19 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED)
 {
-  struct thread* cur = thread_current();
-  if(!cur->child){
+  struct child_process* cp = get_child_process(child_tid);
+  if(!cp){
     return -1;
   }
-  if(cur->is_waiting)
+  if(cp->wait)
     return -1;
-  cur->is_waiting=true;
-  while(cur->is_waiting==true)
+  cp->wait=true;
+  if(!cp->exit)
   {
-    barrier();
+   sema_down(&cp->exit_sema);
   }
+  int returnVal = cp->status;
+  remove_child_process(cp);
 
 /*
     enum intr_level old_level = intr_disable ();
@@ -126,7 +135,7 @@ process_wait (tid_t child_tid UNUSED)
 */
 // return child_tid;
 //printf("waiting status : %d\n",cur->waiting_status);
-  return cur->waiting_status;
+  return returnVal;
 }
 
 /* Free the current process's resources. */
@@ -135,14 +144,29 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
-  if(thread_current()->parent != get_idle_thread()){
-    if(thread_current()->parent->is_waiting == true )
-    {
-      thread_current()->parent->is_waiting=false;
-      //thread_current()->parent->waiting_status=thread_current()->status;
+
+  // Need lock
+  syscall_close(-1);      // exit every process
+  if (cur->is_executing){
+      file_close(cur->is_executing);
     }
-    thread_current()->parent->child = NULL;
-    thread_current()->parent = NULL;
+
+    // remove all of the child -> No 고아 프로세스 (orphan)
+  struct list_elem *next;
+  struct list_elem *e = list_begin(&cur->child_list);
+
+  for (;e != list_end (&cur->child_list) ; e = next){
+      next = list_next(e);
+      struct child_process *cp = list_entry (e, struct child_process, elem);
+      list_remove(&cp->elem);
+      free(cp);
+  }
+
+    // kernel에 의해 종료되는 경우 체크
+  if (thread_alive(cur->parent) && cur->cp && cur->is_executing)
+  {
+    cur->cp->exit = true;
+    sema_up(&cur->cp->exit_sema);
   }
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -283,6 +307,7 @@ printf("\n");
   process_activate ();
 
   /* Open executable file. */
+  lock_acquire(&file_lock);
   file = filesys_open (file_name);
 //printf("if NULL(1),exist(0) :%d\n",file==NULL);
   if (file == NULL)
@@ -290,6 +315,9 @@ printf("\n");
       printf ("load: %s: open failed\n", file_name);
       goto done;
     }
+
+  file_deny_write(file);
+  t->is_executing = file;
 
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
@@ -374,7 +402,7 @@ printf("\n");
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
+  lock_release(&file_lock);
   return success;
 }
 

@@ -97,8 +97,9 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
-    struct thread *parent;
+    tid_t parent;
     struct thread *child;
+    struct child_process *cp;
 
     bool is_waiting;
     int waiting_status;
@@ -107,6 +108,10 @@ struct thread
     // for file system_call implement - jm
     struct list file_list;
     int fd;
+
+    struct file* is_executing;
+
+    struct list child_list;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -155,5 +160,6 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+bool thread_alive (int pid);
 
 #endif /* threads/thread.h */
